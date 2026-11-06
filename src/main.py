@@ -16,25 +16,37 @@ else:
 EXIT_SUCCESS: Final = 0
 EXIT_FAILURE: Final = 1
 DEFAULT_MODEL: Final = "gpt-4o-mini"
+DEFAULT_TEMPERATURE: Final = 0.2
+DEFAULT_MAX_TOKENS: Final = 1000
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
-    """Parse supported CLI options with an injectable argument list."""
+    """Parse supported CLI options with full parameter controls."""
     parser = argparse.ArgumentParser(description="Generate a commit message or PR description.")
     parser.add_argument("--staged", action="store_true", help="Read staged changes.")
-    parser.add_argument("--pr", action="store_true", help="Generate Why/What/How PR text.")
+    parser.add_argument("--pr", action="store_true", help="Generate Why/What/How to Test PR text.")
     parser.add_argument("--dry-run", action="store_true", help="Preview safe input without an API call.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model name.")
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE, help="Sampling temperature (0.0 to 2.0).")
+    parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Maximum completion tokens.")
     return parser.parse_args(args)
 
 
 def _generate(args: argparse.Namespace, diff: str, status: str) -> str:
     """Preview protected inputs or generate and format the requested output."""
-    client = AIClient(model=args.model)
+    client = AIClient(
+        model=args.model,
+        temperature=args.temperature,
+        max_tokens=args.max_tokens,
+    )
     if args.dry_run:
         safe_status = client.truncate_diff(client.mask_sensitive_data(status))
         safe_diff = client.truncate_diff(client.mask_sensitive_data(diff))
-        return f"Status:\n{safe_status}\nDiff:\n{safe_diff}"
+        return (
+            f"Parameters: model={args.model}, temp={args.temperature}, max_tokens={args.max_tokens}\n"
+            f"Status:\n{safe_status}\n"
+            f"Diff:\n{safe_diff}"
+        )
     if args.pr:
         return OutputFormatter.format_pr(client.generate_pr_description(diff, status))
     return OutputFormatter.format_commit(client.generate_commit_message(diff, status))

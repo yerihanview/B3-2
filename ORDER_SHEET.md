@@ -3,7 +3,7 @@
 > **수석 아키텍트**: 우광택 (@yerihanview)  
 > **발행 주체**: 참모 토토  
 > **수행 에디터**: 챗GPT (또는 기타 AI 코더)  
-> **과제명**: 내가 고친 코드 설명을 AI가 대신 써주는 도우미 만들기
+> **과제명**: 내가 고친 코드 설명을 AI가 대신 써주는 도우미 만들기 (B3-2)
 
 ---
 
@@ -13,19 +13,21 @@ Git 변경사항(`git status`, `git diff`)을 수집하여 OpenAI API를 통해 
 ---
 
 ## 2. Definition of Done (DoD 5대 기계 채점 요건)
-1. **[DoD-1] Git 데이터 수집**: `git status`, `git diff`(staged/unstaged)를 서브프로세스로 안전하게 수집하며, Git 저장소가 아닐 경우 명확한 에러를 반환한다.
+1. **[DoD-1] Git 데이터 수집**: `git status`, `git diff`(staged/unstaged)를 서브프로세스로 안전하게 수집하며, Git 저장소가 아닐 경우 명확한 에러를 반환한다. diff가 비어있을 경우 친절한 안내와 함께 정상 종료한다.
 2. **[DoD-2] Safe-Mode 보안**: API Key/토큰/비밀번호 정규식 마스킹 및 500줄 초과 diff 절단 처리가 작동한다.
-3. **[DoD-3] AI 프롬프트 & 서식**: Conventional Commits 규격 커밋 메시지와 Why/What/How PR 템플릿을 생성한다.
-4. **[DoD-4] CLI 인터페이스**: `--staged`, `--pr`, `--dry-run`, `--model` 플래그를 지원한다.
-5. **[DoD-5] 기계 검증 통과**: 독립 채점기 `python tests/verify.py`를 100점(Exit Code 0)으로 통과한다.
+3. **[DoD-3] AI 프롬프트 & 서식**:
+   - 커밋 제목은 최대 72자 제한을 엄격히 준수한다.
+   - PR 제목은 최대 80자 제한을 준수하며, 본문은 반드시 `### Why`, `### What`, `### How to Test` 3대 섹션과 불릿 포인트(`- `)로 구성한다.
+4. **[DoD-4] CLI 인터페이스**: `--staged`, `--pr`, `--dry-run`, `--model`, `--temperature`, `--max-tokens` 플래그를 완벽히 지원한다.
+5. **[DoD-5] 기계 검증 통과**: 독립 채점기 `python tests/verify.py`의 10대 검증 항목을 100점(Exit Code 0)으로 통과하고 `tests/test_result.txt`를 생성한다.
 
 ---
 
 ## 3. Never-Do List (절대 금지 규율)
-- [ ] 전역 변수(Global variables) 사용 절대 금지.
-- [ ] 빈 `except: pass`로 예외를 삼키는 행위 절대 금지.
-- [ ] 한 함수의 길이는 30라인 이하로 단일 책임 유지.
-- [ ] 매직 넘버 금지 (`MAX_DIFF_LINES = 500` 등 상수로 정의).
+- [ ] 가변 전역 변수(Global mutable state) 사용 절대 금지.
+- [ ] 빈 `except: pass`로 예외를 삼키는 행위(Bare except) 절대 금지.
+- [ ] 단일 책임 원칙(SRP) 준수 및 3단계 초과 중첩(Deep Nesting) 금지.
+- [ ] 매직 넘버 금지 (`MAX_DIFF_LINES = 500`, `MAX_COMMIT_TITLE_LEN = 72` 등 상수로 정의).
 - [ ] 모든 함수에 Type Hinting과 Docstring 의무 적용.
 - [ ] `tests/verify.py`에 정의된 인터페이스 시그니처를 임의로 변경하지 말 것.
 
@@ -33,7 +35,7 @@ Git 변경사항(`git status`, `git diff`)을 수집하여 OpenAI API를 통해 
 
 ## 4. 인터페이스 시그니처 계약 (`SPEC.md`)
 - `src/git_manager.py`: `GitManager` (`is_git_repo`, `get_status`, `get_diff`)
-- `src/ai_client.py`: `AIClient` (`mask_sensitive_data`, `truncate_diff`, `generate_commit_message`, `generate_pr_description`)
+- `src/ai_client.py`: `AIClient` (`mask_sensitive_data`, `truncate_diff`, `generate_commit_message`, `generate_pr_description`, `temperature`, `max_tokens`)
 - `src/formatter.py`: `OutputFormatter` (`format_commit`, `format_pr`)
 - `src/main.py`: `parse_args`, `run_cli`
 

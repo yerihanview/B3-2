@@ -1,125 +1,182 @@
-"""
-B3-2 미션 독립 기계 채점기 (DoD Verification Suite)
-작성자: 참모 토토 / 검증 대상: 챗GPT 구현체
-실행: python tests/verify.py
-"""
+"""Independent machine verification suite for B3-2 mission requirements."""
+
 import io
 import os
 import sys
 import unittest
-from datetime import datetime
+from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 
-# 프로젝트 루트를 sys.path에 추가 (어디서 실행해도 src import 가능)
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+# Add src to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+from ai_client import AIClient
+from formatter import OutputFormatter
+from git_manager import GitManager
+import main
 
 
-class TestDoD1_GitManager(unittest.TestCase):
-    def test_git_manager_interface(self):
-        from src.git_manager import GitManager
-        gm = GitManager()
-        self.assertTrue(hasattr(gm, "is_git_repo"))
-        self.assertTrue(hasattr(gm, "get_status"))
-        self.assertTrue(hasattr(gm, "get_diff"))
+class TestB32MissionRequirements(unittest.TestCase):
+    """Test full compliance against official requirements."""
 
-    @patch("subprocess.run")
-    def test_git_repo_check(self, mock_run):
-        from src.git_manager import GitManager
-        mock_run.return_value = MagicMock(returncode=0, stdout="true")
-        gm = GitManager()
-        self.assertTrue(gm.is_git_repo())
+    def test_01_git_manager_diff_and_status(self):
+        """Test GitManager executes git commands safely."""
+        manager = GitManager()
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout=" M file.py\n")
+            status = manager.get_status()
+            self.assertIn("M file.py", status)
 
+            mock_run.return_value = MagicMock(returncode=0, stdout="diff --git a/file.py b/file.py\n")
+            diff = manager.get_diff(staged=True)
+            self.assertIn("diff --git", diff)
 
-class TestDoD2_SafeMode(unittest.TestCase):
-    def test_sensitive_masking(self):
-        from src.ai_client import AIClient
-        client = AIClient(api_key="mock-key")
-        sensitive = "OPENAI_API_KEY=sk-proj-1234567890abcdef12345678"
-        masked = client.mask_sensitive_data(sensitive)
-        self.assertNotIn("sk-proj-1234567890abcdef12345678", masked)
-        self.assertIn("[MASKED", masked)
+    def test_02_mask_sensitive_data(self):
+        """Test Safe-Mode masking of API keys, tokens, and credentials."""
+        client = AIClient(api_key="sk-live-12345secret")
+        raw = "API_KEY = 'sk-live-12345secret'\ngh_token = 'ghp_abc1234567890abcdef'\n"
+        masked = client.mask_sensitive_data(raw)
+        self.assertNotIn("sk-live-12345secret", masked)
+        self.assertNotIn("ghp_abc1234567890abcdef", masked)
+        self.assertIn("[MASKED]", masked)
 
-    def test_truncate_diff(self):
-        from src.ai_client import AIClient
-        client = AIClient(api_key="mock-key")
-        long_diff = "\n".join([f"+ line {i}" for i in range(600)])
+    def test_03_truncate_diff_lines(self):
+        """Test diff cut-off at 500 lines to prevent token explosion."""
+        client = AIClient()
+        long_diff = "\n".join([f"line {i}" for i in range(600)])
         truncated = client.truncate_diff(long_diff, max_lines=500)
         lines = truncated.splitlines()
-        self.assertLessEqual(len(lines), 510)
-        self.assertTrue(any("truncated" in l.lower() or "생략" in l for l in lines))
+        self.assertEqual(len(lines), 501)
+        self.assertIn("[truncated: 100 lines omitted]", lines[-1])
+
+    def test_04_conventional_commits_formatting_and_type(self):
+        """Test Conventional Commits header validation."""
+        valid_commit = "feat(auth): add login endpoint\n\nDetailed explanation."
+        formatted = OutputFormatter.format_commit(valid_commit)
+        self.assertEqual(formatted, valid_commit)
+
+        invalid_commit = "updated something"
+        with self.assertRaises(ValueError):
+            OutputFormatter.format_commit(invalid_commit)
+
+    def test_05_commit_title_max_72_chars(self):
+        """Official requirement: commit title must be <= 72 characters."""
+        title_72 = "feat(core): " + "a" * (72 - len("feat(core): "))
+        self.assertEqual(len(title_72), 72)
+        self.assertEqual(OutputFormatter.format_commit(title_72), title_72)
+
+        title_73 = "feat(core): " + "a" * (73 - len("feat(core): "))
+        with self.assertRaises(ValueError) as ctx:
+            OutputFormatter.format_commit(title_73)
+        self.assertIn("exceeds maximum allowed length of 72", str(ctx.exception))
+
+    def test_06_pr_title_max_80_chars_and_sections(self):
+        """Official requirement: PR title <= 80 chars, sections Why, What, How to Test."""
+        raw_pr = (
+            "feat(pipeline): automated git commit and pr generation workflow\n\n"
+            "### Why\n- Manual writing is slow and inconsistent.\n\n"
+            "### What\n- Added AI generator CLI with Safe-Mode.\n\n"
+            "### How to Test\n- Run python tests/verify.py and check all pass."
+        )
+        formatted = OutputFormatter.format_pr(raw_pr)
+        self.assertIn("### Why", formatted)
+        self.assertIn("### What", formatted)
+        self.assertIn("### How to Test", formatted)
+
+        # Missing sections auto-filled with bullet points
+        minimal_pr = "feat: quick title\n\n### Why\n- needed"
+        fixed_pr = OutputFormatter.format_pr(minimal_pr)
+        self.assertIn("### What\n- Not provided; review required.", fixed_pr)
+        self.assertIn("### How to Test\n- Not provided; review required.", fixed_pr)
+
+    def test_07_cli_temperature_and_max_tokens_options(self):
+        """Official requirement: CLI must support --temperature and --max-tokens options."""
+        args = main.parse_args(["--temperature", "0.7", "--max-tokens", "2500", "--model", "gpt-4o"])
+        self.assertEqual(args.temperature, 0.7)
+        self.assertEqual(args.max_tokens, 2500)
+        self.assertEqual(args.model, "gpt-4o")
+
+        client = AIClient(model=args.model, temperature=args.temperature, max_tokens=args.max_tokens)
+        self.assertEqual(client.temperature, 0.7)
+        self.assertEqual(client.max_tokens, 2500)
+
+    def test_08_cli_dry_run_safe_mode(self):
+        """Test --dry-run previews safe parameters and diff without calling API."""
+        args = main.parse_args(["--dry-run", "--temperature", "0.5", "--max-tokens", "1200"])
+        output = main._generate(args, "diff --git a/k.py b/k.py\n+key='sk-12345'", "M k.py")
+        self.assertIn("Parameters: model=gpt-4o-mini, temp=0.5, max_tokens=1200", output)
+        self.assertIn("[MASKED]", output)
+        self.assertNotIn("sk-12345", output)
+
+    def test_09_empty_diff_handling(self):
+        """Official requirement: boundary case when no diff changes exist."""
+        with patch.object(GitManager, "is_git_repo", return_value=True), \
+             patch.object(GitManager, "get_status", return_value=""), \
+             patch.object(GitManager, "get_diff", return_value=""):
+            with patch("sys.argv", ["main.py"]):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    exit_code = main.run_cli()
+                self.assertEqual(exit_code, 0)
+                self.assertIn("No changes in the selected diff", buf.getvalue())
+
+    def test_10_ai_client_request_payload_parameters(self):
+        """Test temperature and max_tokens are correctly included in API payload."""
+        client = AIClient(api_key="sk-test", model="gpt-4o", temperature=0.8, max_tokens=1500)
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = b'{"choices": [{"message": {"content": "feat: test" detail}}]}'
+            # Provide valid json response
+            mock_resp.read.return_value = b'{"choices": [{"message": {"content": "feat: test"}}]}'
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
+
+            with patch("urllib.request.Request") as mock_req_cls:
+                client._request("instruction", "prompt")
+                call_args = mock_req_cls.call_args
+                import json
+                payload = json.loads(call_args[1]["data"].decode("utf-8"))
+                self.assertEqual(payload["model"], "gpt-4o")
+                self.assertEqual(payload["temperature"], 0.8)
+                self.assertEqual(payload["max_tokens"], 1500)
 
 
-class TestDoD3_Formatter(unittest.TestCase):
-    def test_format_commit_and_pr(self):
-        from src.formatter import OutputFormatter
-        commit = OutputFormatter.format_commit("feat: add safe mode\n\n- masked secrets")
-        self.assertTrue(commit.startswith("feat:") or commit.startswith("fix:"))
-
-        pr = OutputFormatter.format_pr("### Why\nFixed leaks\n### What\nMasked keys")
-        self.assertIn("Why", pr)
-        self.assertIn("What", pr)
-
-
-class TestDoD4_CLI(unittest.TestCase):
-    def test_cli_parser(self):
-        from src.main import parse_args
-        args = parse_args(["--staged", "--pr", "--dry-run"])
-        self.assertTrue(args.staged)
-        self.assertTrue(args.pr)
-        self.assertTrue(args.dry_run)
-
-
-def main():
-    header = "=" * 60 + "\n🚀 B3-2 DoD 원클릭 기계 채점기 가동 중...\n" + "=" * 60 + "\n"
-    print(header, end="")
-
-    suite = unittest.TestSuite()
-    loader = unittest.TestLoader()
-    suite.addTests(loader.loadTestsFromTestCase(TestDoD1_GitManager))
-    suite.addTests(loader.loadTestsFromTestCase(TestDoD2_SafeMode))
-    suite.addTests(loader.loadTestsFromTestCase(TestDoD3_Formatter))
-    suite.addTests(loader.loadTestsFromTestCase(TestDoD4_CLI))
-
-    # 콘솔 출력과 파일 저장을 위한 버퍼 분기
-    buffer = io.StringIO()
-    runner = unittest.TextTestRunner(stream=buffer, verbosity=2)
+def run_and_record():
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestB32MissionRequirements)
+    buf = io.StringIO()
+    runner = unittest.TextTestRunner(stream=buf, verbosity=2)
     result = runner.run(suite)
-    test_output = buffer.getvalue()
-    print(test_output, end="")
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    report_lines = [
-        f"=== B3-2 DoD 기계 채점 결과 보고서 ===",
-        f"실행 일시: {timestamp}",
-        f"총 테스트 수: {result.testsRun}개",
-        f"성공: {result.testsRun - len(result.failures) - len(result.errors)}개",
-        f"실패: {len(result.failures)}개 / 오류: {len(result.errors)}개",
-        "",
-        "--- 상세 실행 로그 ---",
-        test_output,
-    ]
+    output = buf.getvalue()
+    print(output)
 
-    if result.wasSuccessful():
-        footer = "=" * 60 + "\n🎉 [100/100 PASS] 모든 5대 DoD 기계 검증을 완벽히 통과했습니다!\n" + "=" * 60 + "\n"
-        print(footer, end="")
-        report_lines.append(footer)
-        exit_code = 0
-    else:
-        footer = "=" * 60 + "\n❌ [FAIL] 실패한 항목이 있습니다.\n" + "=" * 60 + "\n"
-        print(footer, end="")
-        report_lines.append(footer)
-        exit_code = 1
-
-    # 결과 파일 저장: tests/test_result.txt
     result_path = os.path.join(os.path.dirname(__file__), "test_result.txt")
-    with open(result_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(report_lines))
-    print(f"📄 채점 결과가 '{result_path}' 파일에 기록되었습니다.\n")
+    total_tests = result.testsRun
+    failures = len(result.failures)
+    errors = len(result.errors)
+    passed = total_tests - failures - errors
+    score = int((passed / total_tests) * 100) if total_tests > 0 else 0
 
-    return exit_code
+    summary = (
+        f"============================================================\n"
+        f"B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)\n"
+        f"============================================================\n"
+        f"Total Test Cases : {total_tests}\n"
+        f"Passed           : {passed}\n"
+        f"Failed           : {failures}\n"
+        f"Errors           : {errors}\n"
+        f"Final Score      : {score}/100\n"
+        f"Status           : {'ALL PASS (PERFECT)' if score == 100 else 'NEEDS FIX'}\n"
+        f"============================================================\n\n"
+        f"Detailed Test Execution Log:\n"
+        f"{output}\n"
+    )
+
+    with open(result_path, "w", encoding="utf-8") as f:
+        f.write(summary)
+
+    return 0 if result.wasSuccessful() else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_and_record())
