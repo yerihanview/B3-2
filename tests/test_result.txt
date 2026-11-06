@@ -1,0 +1,22 @@
+=== B3-2 DoD 기계 채점 결과 보고서 ===
+실행 일시: 2026-11-06 12:32:44
+총 테스트 수: 6개
+성공: 6개
+실패: 0개 / 오류: 0개
+
+--- 상세 실행 로그 ---
+test_git_manager_interface (__main__.TestDoD1_GitManager.test_git_manager_interface) ... ok
+test_git_repo_check (__main__.TestDoD1_GitManager.test_git_repo_check) ... ok
+test_sensitive_masking (__main__.TestDoD2_SafeMode.test_sensitive_masking) ... ok
+test_truncate_diff (__main__.TestDoD2_SafeMode.test_truncate_diff) ... ok
+test_format_commit_and_pr (__main__.TestDoD3_Formatter.test_format_commit_and_pr) ... ok
+test_cli_parser (__main__.TestDoD4_CLI.test_cli_parser) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.042s
+
+OK
+
+============================================================
+🎉 [100/100 PASS] 모든 5대 DoD 기계 검증을 완벽히 통과했습니다!
+============================================================

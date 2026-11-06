@@ -26,9 +26,12 @@
 B3-2/
 ├── .gitignore              # .env 및 캐시 파일의 Git 추적 원천 차단
 ├── .env.example            # 환경변수 설정 가이드 템플릿
-├── verify.py               # DoD 5대 완료 요건 원클릭 독립 기계 채점기 (100점 테스트 스위트)
+├── ORDER_SHEET.md          # 토토가 사전 발행한 MBO 표준 작업 지시서
 ├── README.md               # 프로젝트 종합 안내서 및 동료평가자 시연 가이드
 ├── RETROSPECTIVE.md        # 아키텍트-에디터 입체적 개발 회고록
+├── tests/
+│   ├── verify.py           # DoD 5대 완료 요건 원클릭 독립 기계 채점기 (100점 테스트 스위트)
+│   └── test_result.txt     # DoD 기계 채점 실행 결과 보고서 (자동 생성)
 └── src/
     ├── __init__.py         # 패키지 네임스페이스
     ├── git_manager.py      # [DoD-1] Git 명령어 실행, 저장소 검증 및 status/diff 안전 수집
@@ -140,8 +143,9 @@ python src/main.py [OPTIONS]
 
 ### 원클릭 채점 실행
 ```bash
-python verify.py
+python tests/verify.py
 ```
+> 채점 결과는 콘솔에 출력됨과 동시에 `tests/test_result.txt` 파일에 타임스탬프와 함께 자동 보존됩니다.
 
 ### 채점 결과
 ```
@@ -174,9 +178,9 @@ OK
 
 ### [Step 1] 독립 기계 채점기 1초 100점 검증
 ```bash
-python verify.py
+python tests/verify.py
 ```
-> **기대 결과**: 6개 테스트 통과, `[100/100 PASS]` 출력.
+> **기대 결과**: 6개 테스트 통과, `[100/100 PASS]` 출력 및 `tests/test_result.txt` 생성.
 
 ### [Step 2] 안전한 Dry-Run 커밋 메시지 프리뷰 (API 키 불필요)
 ```bash
