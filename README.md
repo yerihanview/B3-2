@@ -109,20 +109,25 @@ export OPENAI_API_KEY="your-api-key-here"
 
 ## 6. CLI 옵션 레퍼런스
 
-### 6-1. 진입점 및 호출 방식 (루트 main.py 및 src/main.py 100% 호환)
+### 6-1. 진입점 및 호출 방식 (모듈 실행·설치형 CLI·루트 래퍼 3대 다중 호환)
 
-프로젝트 루트의 `main.py`와 `src/main.py` 어디서든 동일하게 실행 가능하며, 서브커맨드와 플래그를 모두 지원합니다:
+표준 패키지 모듈 실행(`python -m git_agent`), 설치형 전역 CLI(`git-agent`), 그리고 공식 미션지 호환용 루트 `main.py` 어디서든 동일하게 실행 가능합니다:
 
 ```bash
-# 루트 진입점 (공식 미션지 규격)
-python main.py commit [OPTIONS]   # 커밋 메시지 생성 (구획 헤더 포함)
-python main.py pr     [OPTIONS]   # Why/What/How to Test PR 설명 생성 (구획 헤더 포함)
-python main.py --pr   [OPTIONS]   # pr 서브커맨드와 동일 (하위 호환)
-python main.py        [OPTIONS]   # 기본값: commit
+# 1. 패키지 모듈 실행 (Python 표준 CLI)
+python -m git_agent commit [OPTIONS]
+python -m git_agent pr     [OPTIONS]
 
-# 패키지 내부 직접 실행
-python src/main.py commit [OPTIONS]
-python src/main.py pr     [OPTIONS]
+# 2. 설치형 전역 CLI (pip install -e . 실행 후)
+git-agent commit [OPTIONS]
+git-agent pr     [OPTIONS]
+cg commit        [OPTIONS]    # 단축 명령어
+
+# 3. 루트 진입점 (공식 미션지 규격 하위 호환)
+python main.py commit [OPTIONS]
+python main.py pr     [OPTIONS]
+python main.py --pr   [OPTIONS]
+python main.py        [OPTIONS]   # 기본값: commit
 ```
 
 #### 공식 미션지 준수: 최종 출력 구획화 (Delimiters)
@@ -261,7 +266,8 @@ python src/main.py pr --max-tokens 300 > /tmp/pr_300.md
 21. **`--no-safe-mode` 프롬프트**: Safe-Mode 해제 시 원문이 그대로 전송되고, 기본 모드에서는 마스킹됨.
 22. **최종 출력 구획화 검증**: 공식 미션지 필수 항목인 `--- Commit Message ---`, `--- PR Title ---`, `--- PR Body ---` 구분선 헤더 출력 검증.
 23. **미추적 파일(Untracked) 안내**: diff가 비어 있어도 신규 미추적 파일(`??`) 감지 시 `git add` 유도 안내 출력 검증.
-24. **루트 진입점(`main.py`) 래퍼 검증**: 루트 `python main.py` 실행 시 `src.main.run_cli`로의 온전한 바인딩 및 구동 검증.
+24. **루트 진입점(`main.py`) 래퍼 검증**: 루트 `python main.py` 실행 시 `git_agent.cli.run_cli`로의 온전한 바인딩 및 구동 검증.
+25. **표준 패키지 레이아웃 및 `pyproject.toml` 검증**: `src/git_agent` 네임스페이스 격리, `python -m git_agent` 모듈 실행 및 `[project.scripts]` 콘솔 엔트리포인트 무결성 검증.
 
 ### 원클릭 채점 실행
 ```bash
@@ -276,7 +282,7 @@ python tests/verify.py
 동료평가자께서는 아래 명령어를 터미널에 그대로 복사·붙여넣기하여 프로젝트의 모든 기능을 3분 이내에 검증하실 수 있습니다. (클론 직후에는 변경사항이 없으므로, 시연용 변경을 하나 만들어 둡니다.)
 
 ```bash
-# [Step 1] 독립 기계 채점기 1초 검증 (24대 항목 전수 All Pass, 100점)
+# [Step 1] 독립 기계 채점기 1초 검증 (25대 항목 전수 All Pass, 100점)
 python tests/verify.py
 
 # [Step 2] 시연용 변경 만들기
@@ -297,4 +303,4 @@ cat tests/test_result.txt
 git reset && rm DEMO.md
 ```
 
-> **기대 결과**: 24개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `--- Commit Message ---` 또는 `--- PR Title ---` / `--- PR Body ---` 구획선과 `### Why` / `### What` / `### How to Test` 불릿 구조를 완벽하게 만족합니다.
+> **기대 결과**: 25개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `--- Commit Message ---` 또는 `--- PR Title ---` / `--- PR Body ---` 구획선과 `### Why` / `### What` / `### How to Test` 불릿 구조를 완벽하게 만족합니다.

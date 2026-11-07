@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git-agent"
+version = "1.0.0"
+description = "AI-powered Git commit message and PR description generator CLI with Safe-Mode"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Gwangtaek Woo", email = "yerihan@gmail.com" }
+]
+keywords = ["git", "ai", "commit", "pr", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+
+[project.scripts]
+git-agent = "git_agent.cli:main"
+cg = "git_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

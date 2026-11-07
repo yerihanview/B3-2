@@ -1,8 +1,8 @@
 ============================================================
 B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)
 ============================================================
-Total Test Cases : 24
-Passed           : 24
+Total Test Cases : 25
+Passed           : 25
 Failed           : 0
 Errors           : 0
 Final Score      : 100/100
@@ -58,9 +58,11 @@ test_23_untracked_files_guidance_when_diff_empty (__main__.TestB32MissionRequire
 Edge case: when diff is empty but untracked files exist, guide user to git add. ... ok
 test_24_root_main_wrapper_entrypoint (__main__.TestB32MissionRequirements.test_24_root_main_wrapper_entrypoint)
 Usability: root main.py exists and correctly invokes the CLI pipeline. ... ok
+test_25_package_execution_and_pyproject (__main__.TestB32MissionRequirements.test_25_package_execution_and_pyproject)
+Architecture: standard package layout (src/git_agent) and pyproject.toml scripts. ... ok
 
 ----------------------------------------------------------------------
-Ran 24 tests in 0.027s
+Ran 25 tests in 0.100s
 
 OK
 

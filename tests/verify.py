@@ -433,6 +433,35 @@ class TestB32MissionRequirements(unittest.TestCase):
         spec.loader.exec_module(root_module)
         self.assertTrue(hasattr(root_module, "run_cli"))
 
+    def test_25_package_execution_and_pyproject(self):
+        """Architecture: standard package layout (src/git_agent) and pyproject.toml scripts."""
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        pyproject_path = os.path.join(repo_root, "pyproject.toml")
+        self.assertTrue(os.path.exists(pyproject_path), "pyproject.toml must exist")
+        with open(pyproject_path, "r", encoding="utf-8") as f:
+            pyproject_content = f.read()
+        self.assertIn("[project.scripts]", pyproject_content)
+        self.assertIn("git-agent = \"git_agent.cli:main\"", pyproject_content)
+
+        pkg_init = os.path.join(repo_root, "src", "git_agent", "__init__.py")
+        pkg_main = os.path.join(repo_root, "src", "git_agent", "__main__.py")
+        self.assertTrue(os.path.exists(pkg_init), "src/git_agent/__init__.py must exist")
+        self.assertTrue(os.path.exists(pkg_main), "src/git_agent/__main__.py must exist")
+
+        import subprocess
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.path.join(repo_root, "src")
+        res = subprocess.run(
+            [sys.executable, "-m", "git_agent", "--help"],
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("usage: git-agent", res.stdout)
+
+
 
 def run_and_record():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestB32MissionRequirements)
