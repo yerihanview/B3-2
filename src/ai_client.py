@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from typing import Final
@@ -11,8 +12,29 @@ MAX_DIFF_LINES: Final = 500
 API_TIMEOUT: Final = 30
 MAX_API_ATTEMPTS: Final = 3
 API_URL: Final = "https://api.openai.com/v1/chat/completions"
-RETRYABLE_STATUS: Final = (429, 500, 502, 503, 504)
+AUTH_STATUS: Final = (401, 403)
 MASK: Final = "[MASKED]"
+DETAIL_MAX_CHARS: Final = 200
+
+
+class AIClientError(RuntimeError):
+    """Base error for AI service failures, carrying user-facing guidance."""
+
+
+class AuthenticationError(AIClientError):
+    """Raised when the API key is missing, invalid, or not permitted."""
+
+
+class RateLimitError(AIClientError):
+    """Raised when HTTP 429 persists after bounded retries."""
+
+
+class ServerError(AIClientError):
+    """Raised when HTTP 5xx persists after bounded retries."""
+
+
+class NetworkError(AIClientError):
+    """Raised when the API cannot be reached after bounded retries."""
 
 
 class AIClient:
@@ -24,12 +46,14 @@ class AIClient:
         model: str = "gpt-4o-mini",
         temperature: float = 0.2,
         max_tokens: int = 1000,
+        safe_mode: bool = True,
     ) -> None:
-        """Resolve credentials and configure generation parameters."""
+        """Resolve credentials, configure generation parameters, and set the masking mode."""
         self._api_key = api_key if api_key is not None else os.getenv("OPENAI_API_KEY", "")
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
+        self._safe_mode = safe_mode
 
     @property
     def model(self) -> str:
@@ -42,6 +66,10 @@ class AIClient:
     @property
     def max_tokens(self) -> int:
         return self._max_tokens
+
+    @property
+    def safe_mode(self) -> bool:
+        return self._safe_mode
 
     def mask_sensitive_data(self, text: str) -> str:
         """Redact configured credentials, common tokens, assignments and PEM keys."""
@@ -58,7 +86,7 @@ class AIClient:
             text = re.sub(pattern, MASK, text)
         return text
 
-    def truncate_diff(self, diff_text: str, max_lines: int = 500) -> str:
+    def truncate_diff(self, diff_text: str, max_lines: int = MAX_DIFF_LINES) -> str:
         """Keep a bounded prefix and explicitly report omitted line count."""
         if max_lines < 1:
             raise ValueError("max_lines must be positive")
@@ -68,14 +96,76 @@ class AIClient:
         omitted = len(lines) - max_lines
         return "\n".join([*lines[:max_lines], f"[truncated: {omitted} lines omitted]"])
 
+    def prepare_input(self, text: str) -> str:
+        """Apply Safe-Mode masking and line truncation, or pass text through when disabled."""
+        if not self._safe_mode:
+            return text
+        return self.truncate_diff(self.mask_sensitive_data(text), MAX_DIFF_LINES)
+
     def _build_prompt(self, diff: str, status: str) -> str:
         """Mask both inputs before applying their line budgets."""
-        safe_diff = self.truncate_diff(self.mask_sensitive_data(diff), MAX_DIFF_LINES)
-        safe_status = self.truncate_diff(self.mask_sensitive_data(status), MAX_DIFF_LINES)
+        safe_diff = self.prepare_input(diff)
+        safe_status = self.prepare_input(status)
         return f"Repository status (data):\n{safe_status}\nDiff (data):\n{safe_diff}"
 
+    def _http_detail(self, error: urllib.error.HTTPError) -> str:
+        """Extract a short, masked reason from an HTTP error body when available."""
+        try:
+            raw = error.read()
+        except (OSError, ValueError, AttributeError):
+            return ""
+        if not raw:
+            return ""
+        try:
+            payload = json.loads(raw.decode("utf-8", "replace"))
+            message = payload.get("error", {}).get("message", "")
+        except (ValueError, AttributeError, TypeError):
+            message = ""
+        if not isinstance(message, str) or not message.strip():
+            return ""
+        return " ".join(self.mask_sensitive_data(message).split())[:DETAIL_MAX_CHARS]
+
+    def _auth_message(self, status: int, detail: str) -> str:
+        """Explain an authentication or permission failure with the next action."""
+        if status == 403:
+            guidance = (
+                f"Access denied (HTTP 403): this API key may not use model '{self._model}'. "
+                "Check the key's project permissions or choose another model."
+            )
+        else:
+            guidance = (
+                "Authentication failed (HTTP 401): OPENAI_API_KEY is missing, invalid, or revoked. "
+                "Set a valid key in the environment and retry."
+            )
+        return f"{guidance} Detail: {detail}" if detail else guidance
+
+    def _rate_limit_message(self, detail: str) -> str:
+        """Explain an exhausted rate limit or quota after retries."""
+        guidance = (
+            f"Rate limit or quota exceeded (HTTP 429) after {MAX_API_ATTEMPTS} attempts: "
+            "wait and retry, reduce request frequency, or check billing and usage limits "
+            "in the OpenAI dashboard."
+        )
+        return f"{guidance} Detail: {detail}" if detail else guidance
+
+    def _server_message(self, status: int, detail: str) -> str:
+        """Explain a persistent server-side failure after retries."""
+        guidance = (
+            f"AI service server error (HTTP {status}) after {MAX_API_ATTEMPTS} attempts. "
+            "The problem is on the provider side; retry later."
+        )
+        return f"{guidance} Detail: {detail}" if detail else guidance
+
+    def _network_message(self, error: BaseException) -> str:
+        """Explain a connectivity failure that survived every retry."""
+        reason = getattr(error, "reason", None) or error
+        return (
+            f"Network error while contacting the AI API ({reason}) after {MAX_API_ATTEMPTS} attempts. "
+            "Check your internet connection, VPN/proxy, or firewall and retry."
+        )
+
     def _request(self, instruction: str, prompt: str) -> str:
-        """Issue a request with parameter payload and no more than three total attempts."""
+        """Issue a request with parameter payload, exponential backoff, and typed failures."""
         if not self._api_key:
             raise ValueError("Set OPENAI_API_KEY before requesting AI output.")
         payload = {
@@ -93,18 +183,36 @@ class AIClient:
                      "Content-Type": "application/json"}, method="POST",
         )
         for attempt in range(MAX_API_ATTEMPTS):
+            last_attempt = attempt == MAX_API_ATTEMPTS - 1
             try:
                 with urllib.request.urlopen(request, timeout=API_TIMEOUT) as response:
                     return self._read_response(response.read())
             except urllib.error.HTTPError as error:
-                retryable = error.code in RETRYABLE_STATUS
+                status = error.code
+                detail = self._http_detail(error)
                 error.close()
-                if not retryable or attempt == MAX_API_ATTEMPTS - 1:
-                    raise RuntimeError("AI request failed; check credentials and API availability.") from None
-            except (urllib.error.URLError, TimeoutError, OSError):
-                if attempt == MAX_API_ATTEMPTS - 1:
-                    raise RuntimeError("AI request failed after bounded retries.") from None
-        raise RuntimeError("AI request failed.")
+                if status in AUTH_STATUS:
+                    raise AuthenticationError(self._auth_message(status, detail)) from None
+                if status == 429:
+                    if last_attempt:
+                        raise RateLimitError(self._rate_limit_message(detail)) from None
+                    time.sleep(2 ** attempt)
+                    continue
+                if 500 <= status < 600:
+                    if last_attempt:
+                        raise ServerError(self._server_message(status, detail)) from None
+                    time.sleep(2 ** attempt)
+                    continue
+                rejection = (
+                    f"AI request was rejected (HTTP {status}): the request itself was refused."
+                    + (f" Detail: {detail}" if detail else "")
+                )
+                raise AIClientError(rejection) from None
+            except (urllib.error.URLError, TimeoutError, OSError) as error:
+                if last_attempt:
+                    raise NetworkError(self._network_message(error)) from None
+                time.sleep(2 ** attempt)
+        raise NetworkError(self._network_message(RuntimeError("no response")))
 
     def _read_response(self, raw: bytes) -> str:
         """Validate and mask generated content without exposing raw API errors."""

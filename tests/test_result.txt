@@ -1,8 +1,8 @@
 ============================================================
 B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)
 ============================================================
-Total Test Cases : 10
-Passed           : 10
+Total Test Cases : 21
+Passed           : 21
 Failed           : 0
 Errors           : 0
 Final Score      : 100/100
@@ -30,9 +30,31 @@ test_09_empty_diff_handling (__main__.TestB32MissionRequirements.test_09_empty_d
 Official requirement: boundary case when no diff changes exist. ... ok
 test_10_ai_client_request_payload_parameters (__main__.TestB32MissionRequirements.test_10_ai_client_request_payload_parameters)
 Test temperature and max_tokens are correctly included in API payload. ... ok
+test_11_pr_section_without_bullet_is_rejected (__main__.TestB32MissionRequirements.test_11_pr_section_without_bullet_is_rejected)
+New: a section that exists but holds no bullet is an empty shell and must be rejected. ... ok
+test_12_pr_title_word_boundary_truncation_and_empty_title (__main__.TestB32MissionRequirements.test_12_pr_title_word_boundary_truncation_and_empty_title)
+New: over-long titles are cut at a word boundary, and empty titles are rejected. ... ok
+test_13_safe_mode_flag_defaults_and_effect (__main__.TestB32MissionRequirements.test_13_safe_mode_flag_defaults_and_effect)
+New: --safe-mode is on by default and --no-safe-mode turns masking off. ... ok
+test_14_http_401_authentication_error (__main__.TestB32MissionRequirements.test_14_http_401_authentication_error)
+New: HTTP 401 fails fast with API-key guidance and no retry. ... ok
+test_15_http_429_rate_limit_backoff (__main__.TestB32MissionRequirements.test_15_http_429_rate_limit_backoff)
+New: HTTP 429 retries with real exponential backoff and then reports the quota cause. ... ok
+test_16_http_500_server_error_and_recovery (__main__.TestB32MissionRequirements.test_16_http_500_server_error_and_recovery)
+New: HTTP 5xx is retried with backoff, recovers on success, and reports persistent failure. ... ok
+test_17_network_error_is_distinguished (__main__.TestB32MissionRequirements.test_17_network_error_is_distinguished)
+New: connection failures surface as NetworkError with connectivity guidance. ... ok
+test_18_subcommand_commit_and_pr_parsing (__main__.TestB32MissionRequirements.test_18_subcommand_commit_and_pr_parsing)
+New: 'commit'/'pr' subcommands parse and stay compatible with the --pr flag. ... ok
+test_19_run_cli_pr_subcommand_end_to_end (__main__.TestB32MissionRequirements.test_19_run_cli_pr_subcommand_end_to_end)
+New: 'python main.py pr' prints formatted PR text through the CLI exit path. ... ok
+test_20_authentication_failure_exit_code (__main__.TestB32MissionRequirements.test_20_authentication_failure_exit_code)
+New: an authentication failure exits with code 1 and prints the 401 guidance. ... ok
+test_21_no_safe_mode_passes_raw_diff_to_prompt (__main__.TestB32MissionRequirements.test_21_no_safe_mode_passes_raw_diff_to_prompt)
+New: disabling Safe-Mode sends the diff unmasked, while default mode masks it. ... ok
 
 ----------------------------------------------------------------------
-Ran 10 tests in 0.006s
+Ran 21 tests in 0.014s
 
 OK
 
