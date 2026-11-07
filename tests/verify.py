@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 # Add src to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from ai_client import (
+from git_agent.ai_client import (
     AIClient,
     AIClientError,
     AuthenticationError,
@@ -20,9 +20,9 @@ from ai_client import (
     RateLimitError,
     ServerError,
 )
-from formatter import MAX_PR_TITLE_LEN, OutputFormatter
-from git_manager import GitManager
-import main
+from git_agent.formatter import MAX_PR_TITLE_LEN, OutputFormatter
+from git_agent.git_manager import GitManager
+from git_agent import cli as main
 
 VALID_PR = (
     "feat(pipeline): automated git commit and pr generation workflow\n\n"
@@ -352,7 +352,7 @@ class TestB32MissionRequirements(unittest.TestCase):
         with patch.object(GitManager, "is_git_repo", return_value=True), \
              patch.object(GitManager, "get_status", return_value="M a.py"), \
              patch.object(GitManager, "get_diff", return_value="diff --git a/a.py b/a.py\n+print(1)"), \
-             patch("main.AIClient") as mock_client_cls:
+             patch.object(main, "AIClient") as mock_client_cls:
             mock_client_cls.return_value.generate_pr_description.return_value = VALID_PR
             with patch("sys.argv", ["main.py", "pr"]):
                 buf = io.StringIO()
@@ -370,7 +370,7 @@ class TestB32MissionRequirements(unittest.TestCase):
         with patch.object(GitManager, "is_git_repo", return_value=True), \
              patch.object(GitManager, "get_status", return_value="M a.py"), \
              patch.object(GitManager, "get_diff", return_value="diff --git a/a.py b/a.py\n+1"), \
-             patch("main.AIClient") as mock_client_cls:
+             patch.object(main, "AIClient") as mock_client_cls:
             mock_client_cls.return_value.generate_commit_message.side_effect = AuthenticationError(
                 "Authentication failed (HTTP 401): OPENAI_API_KEY is missing, invalid, or revoked."
             )
