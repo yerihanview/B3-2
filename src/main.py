@@ -1,4 +1,4 @@
-"""CLI entry point: python -m src.main or python src/main.py [commit|pr] [OPTIONS]."""
+"""CLI entry point: python main.py or python src/main.py [commit|pr] [OPTIONS]."""
 
 import argparse
 import sys
@@ -57,7 +57,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 
 
 def _generate(args: argparse.Namespace, diff: str, status: str) -> str:
-    """Preview protected inputs or generate and format the requested output."""
+    """Preview protected inputs or generate and format the requested output with section delimiters."""
     client = AIClient(
         model=args.model,
         temperature=args.temperature,
@@ -66,14 +66,31 @@ def _generate(args: argparse.Namespace, diff: str, status: str) -> str:
     )
     if args.dry_run:
         return (
+            "--- Dry Run Preview ---\n"
             f"Safe mode: {'on' if args.safe_mode else 'off'}\n"
             f"Parameters: model={args.model}, temp={args.temperature}, max_tokens={args.max_tokens}\n"
             f"Status:\n{client.prepare_input(status)}\n"
-            f"Diff:\n{client.prepare_input(diff)}"
+            f"Diff:\n{client.prepare_input(diff)}\n"
+            "-----------------------"
         )
     if args.pr:
-        return OutputFormatter.format_pr(client.generate_pr_description(diff, status))
-    return OutputFormatter.format_commit(client.generate_commit_message(diff, status))
+        formatted = OutputFormatter.format_pr(client.generate_pr_description(diff, status))
+        lines = formatted.splitlines()
+        title = lines[0].strip()
+        body = "\n".join(lines[1:]).strip()
+        return (
+            "--- PR Title ---\n"
+            f"{title}\n\n"
+            "--- PR Body ---\n"
+            f"{body}\n"
+            "---------------"
+        )
+    formatted = OutputFormatter.format_commit(client.generate_commit_message(diff, status))
+    return (
+        "--- Commit Message ---\n"
+        f"{formatted}\n"
+        "----------------------"
+    )
 
 
 def run_cli() -> int:
@@ -91,7 +108,15 @@ def run_cli() -> int:
         status = manager.get_status()
         diff = manager.get_diff(staged=args.staged)
         if not diff.strip():
-            print("No changes in the selected diff. Stage new files with git add first.")
+            untracked = [line[3:].strip() for line in status.splitlines() if line.startswith("?? ")]
+            if untracked:
+                print(
+                    "No changes in the selected diff, but untracked files were detected:\n"
+                    + "\n".join(f"  ? {path}" for path in untracked)
+                    + "\nPlease stage new files with 'git add <file>' first."
+                )
+            else:
+                print("No changes in the selected diff. Stage new files with git add first.")
             return EXIT_SUCCESS
         print(_generate(args, diff, status))
     except (RuntimeError, ValueError) as error:

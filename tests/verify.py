@@ -390,6 +390,49 @@ class TestB32MissionRequirements(unittest.TestCase):
         safe = AIClient(api_key="", safe_mode=True)
         self.assertNotIn("sk-live-zzz999", safe._build_prompt(raw_diff, "M x.py"))
 
+    def test_22_output_delimiter_sections(self):
+        """Official rubric: final output must be clearly delimited with headers and separators."""
+        commit_args = main.parse_args(["commit"])
+        with patch.object(AIClient, "generate_commit_message", return_value="feat(ui): add button"):
+            commit_out = main._generate(commit_args, "diff", "M a.py")
+            self.assertIn("--- Commit Message ---", commit_out)
+            self.assertIn("feat(ui): add button", commit_out)
+            self.assertIn("----------------------", commit_out)
+
+        pr_args = main.parse_args(["pr"])
+        with patch.object(AIClient, "generate_pr_description", return_value=VALID_PR):
+            pr_out = main._generate(pr_args, "diff", "M a.py")
+            self.assertIn("--- PR Title ---", pr_out)
+            self.assertIn("feat(pipeline): automated git commit and pr generation workflow", pr_out)
+            self.assertIn("--- PR Body ---", pr_out)
+            self.assertIn("### Why", pr_out)
+            self.assertIn("---------------", pr_out)
+
+    def test_23_untracked_files_guidance_when_diff_empty(self):
+        """Edge case: when diff is empty but untracked files exist, guide user to git add."""
+        with patch.object(GitManager, "is_git_repo", return_value=True), \
+             patch.object(GitManager, "get_status", return_value="?? new_feature.py\n?? test.txt\n"), \
+             patch.object(GitManager, "get_diff", return_value=""):
+            with patch("sys.argv", ["main.py"]):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    exit_code = main.run_cli()
+                self.assertEqual(exit_code, 0)
+                output = buf.getvalue()
+                self.assertIn("untracked files were detected", output)
+                self.assertIn("? new_feature.py", output)
+                self.assertIn("git add <file>", output)
+
+    def test_24_root_main_wrapper_entrypoint(self):
+        """Usability: root main.py exists and correctly invokes the CLI pipeline."""
+        root_main_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "main.py"))
+        self.assertTrue(os.path.exists(root_main_path), "Root main.py must exist")
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("root_main", root_main_path)
+        root_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(root_module)
+        self.assertTrue(hasattr(root_module, "run_cli"))
+
 
 def run_and_record():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestB32MissionRequirements)

@@ -1,8 +1,8 @@
 ============================================================
 B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)
 ============================================================
-Total Test Cases : 21
-Passed           : 21
+Total Test Cases : 24
+Passed           : 24
 Failed           : 0
 Errors           : 0
 Final Score      : 100/100
@@ -52,9 +52,15 @@ test_20_authentication_failure_exit_code (__main__.TestB32MissionRequirements.te
 New: an authentication failure exits with code 1 and prints the 401 guidance. ... ok
 test_21_no_safe_mode_passes_raw_diff_to_prompt (__main__.TestB32MissionRequirements.test_21_no_safe_mode_passes_raw_diff_to_prompt)
 New: disabling Safe-Mode sends the diff unmasked, while default mode masks it. ... ok
+test_22_output_delimiter_sections (__main__.TestB32MissionRequirements.test_22_output_delimiter_sections)
+Official rubric: final output must be clearly delimited with headers and separators. ... ok
+test_23_untracked_files_guidance_when_diff_empty (__main__.TestB32MissionRequirements.test_23_untracked_files_guidance_when_diff_empty)
+Edge case: when diff is empty but untracked files exist, guide user to git add. ... ok
+test_24_root_main_wrapper_entrypoint (__main__.TestB32MissionRequirements.test_24_root_main_wrapper_entrypoint)
+Usability: root main.py exists and correctly invokes the CLI pipeline. ... ok
 
 ----------------------------------------------------------------------
-Ran 21 tests in 0.014s
+Ran 24 tests in 0.027s
 
 OK
 

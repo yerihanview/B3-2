@@ -109,24 +109,37 @@ export OPENAI_API_KEY="your-api-key-here"
 
 ## 6. CLI 옵션 레퍼런스
 
-### 6-1. 두 가지 호출 방식 (서브커맨드 / 플래그, 100% 상호 호환)
+### 6-1. 진입점 및 호출 방식 (루트 main.py 및 src/main.py 100% 호환)
+
+프로젝트 루트의 `main.py`와 `src/main.py` 어디서든 동일하게 실행 가능하며, 서브커맨드와 플래그를 모두 지원합니다:
 
 ```bash
-python src/main.py commit [OPTIONS]   # 커밋 메시지 생성
-python src/main.py pr     [OPTIONS]   # Why/What/How to Test PR 설명 생성
-python src/main.py --pr   [OPTIONS]   # 위 pr 서브커맨드와 완전히 동일 (기존 방식)
-python src/main.py        [OPTIONS]   # 서브커맨드 생략 시 기본값 commit
+# 루트 진입점 (공식 미션지 규격)
+python main.py commit [OPTIONS]   # 커밋 메시지 생성 (구획 헤더 포함)
+python main.py pr     [OPTIONS]   # Why/What/How to Test PR 설명 생성 (구획 헤더 포함)
+python main.py --pr   [OPTIONS]   # pr 서브커맨드와 동일 (하위 호환)
+python main.py        [OPTIONS]   # 기본값: commit
+
+# 패키지 내부 직접 실행
+python src/main.py commit [OPTIONS]
+python src/main.py pr     [OPTIONS]
 ```
 
-공식 미션지의 `python main.py commit`, `python main.py pr` 예시를 그대로 입력해도 동작하며, 기존 `--pr` 플래그 사용법도 그대로 유지됩니다.
+#### 공식 미션지 준수: 최종 출력 구획화 (Delimiters)
+출력 결과는 사용자가 명확히 구분하여 검토할 수 있도록 공식 미션지 예시 그대로 구획 구분선과 헤더가 표시됩니다:
+* 커밋 메시지: `--- Commit Message ---` ~ `----------------------`
+* PR 설명: `--- PR Title ---` 및 `--- PR Body ---` ~ `---------------`
+
+#### 미추적 파일(Untracked Files) 지능형 감지
+`git diff`에 잡히지 않는 새로 생성된 파일(`??`)이 있을 경우, "변경 사항이 없다"고 끝내지 않고 미추적 파일 목록을 출력하며 `git add <file>`을 실행하도록 친절히 안내합니다.
 
 ```bash
 # 실전 예시
-python src/main.py commit --staged
-python src/main.py pr --staged --temperature 0.7 --max-tokens 1500
-python src/main.py pr --dry-run               # 마스킹된 입력 미리보기 (API 호출 없음)
-python src/main.py --pr --dry-run             # 위와 동일
-python src/main.py commit --no-safe-mode      # 신뢰된 입력에서만 사용
+python main.py commit --staged
+python main.py pr --staged --temperature 0.7 --max-tokens 1500
+python main.py pr --dry-run               # 마스킹된 입력 미리보기 (API 호출 없음)
+python main.py --pr --dry-run             # 위와 동일
+python main.py commit --no-safe-mode      # 신뢰된 입력에서만 사용
 ```
 
 ### 6-2. 지원 옵션
@@ -246,6 +259,9 @@ python src/main.py pr --max-tokens 300 > /tmp/pr_300.md
 19. **`pr` 서브커맨드 E2E**: `python main.py pr` 경로가 포맷팅된 PR 텍스트를 출력.
 20. **인증 실패 종료 코드**: 401 안내 메시지 출력과 종료 코드 1.
 21. **`--no-safe-mode` 프롬프트**: Safe-Mode 해제 시 원문이 그대로 전송되고, 기본 모드에서는 마스킹됨.
+22. **최종 출력 구획화 검증**: 공식 미션지 필수 항목인 `--- Commit Message ---`, `--- PR Title ---`, `--- PR Body ---` 구분선 헤더 출력 검증.
+23. **미추적 파일(Untracked) 안내**: diff가 비어 있어도 신규 미추적 파일(`??`) 감지 시 `git add` 유도 안내 출력 검증.
+24. **루트 진입점(`main.py`) 래퍼 검증**: 루트 `python main.py` 실행 시 `src.main.run_cli`로의 온전한 바인딩 및 구동 검증.
 
 ### 원클릭 채점 실행
 ```bash
@@ -260,7 +276,7 @@ python tests/verify.py
 동료평가자께서는 아래 명령어를 터미널에 그대로 복사·붙여넣기하여 프로젝트의 모든 기능을 3분 이내에 검증하실 수 있습니다. (클론 직후에는 변경사항이 없으므로, 시연용 변경을 하나 만들어 둡니다.)
 
 ```bash
-# [Step 1] 독립 기계 채점기 1초 검증 (21대 항목 전수 All Pass)
+# [Step 1] 독립 기계 채점기 1초 검증 (24대 항목 전수 All Pass, 100점)
 python tests/verify.py
 
 # [Step 2] 시연용 변경 만들기
@@ -268,17 +284,17 @@ printf 'demo\n' >> DEMO.md
 git add DEMO.md
 
 # [Step 3] 서브커맨드 + Safe-Mode + 파라미터 프리뷰 (API 과금 0원)
-python src/main.py pr --dry-run --staged --temperature 0.7 --max-tokens 1500
-python src/main.py commit --dry-run --staged
+python main.py pr --dry-run --staged --temperature 0.7 --max-tokens 1500
+python main.py commit --dry-run --staged
 
 # [Step 4] 실제 생성 (OPENAI_API_KEY 설정 시)
 export OPENAI_API_KEY="sk-..."
-python src/main.py pr --staged --temperature 0.2 --max-tokens 1500
-python src/main.py commit --staged          # 기존 방식: python src/main.py --pr --staged 도 동일
+python main.py pr --staged --temperature 0.2 --max-tokens 1500
+python main.py commit --staged          # 또는 python src/main.py commit --staged
 
 # [Step 5] 결과물 및 로그 확인 후 정리
 cat tests/test_result.txt
 git reset && rm DEMO.md
 ```
 
-> **기대 결과**: 21개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `### Why` / `### What` / `### How to Test` 불릿 구조와 80자 이내 제목을 만족합니다.
+> **기대 결과**: 24개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `--- Commit Message ---` 또는 `--- PR Title ---` / `--- PR Body ---` 구획선과 `### Why` / `### What` / `### How to Test` 불릿 구조를 완벽하게 만족합니다.

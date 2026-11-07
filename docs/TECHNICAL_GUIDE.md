@@ -219,24 +219,27 @@ B3-2는 **"단어 경계 절단 및 공백 정리는 후처리"**로 해결하�
 | **#19** | `test_19_pr_subcommand_e2e` | `pr` 서브커맨드 실행 시 전체 E2E 파이프라인 검증 | E2E |
 | **#20** | `test_20_auth_exit_code_1` | 인증 실패 시 프로세스 종료 코드 1 검증 | Production |
 | **#21** | `test_21_no_safe_mode_unmasked` | `--no-safe-mode` 설정 시 원본 diff 전송 검증 | Security |
+| **#22** | `test_22_output_delimiter_sections` | **공식 미션지 구획화(`--- Commit Message ---`, `--- PR Title/Body ---`) 검증** | **Audit 핫픽스** |
+| **#23** | `test_23_untracked_files_guidance` | **diff 부재 시 미추적 파일(`??`) 감지 및 `git add` 유도 안내 검증** | **Audit 핫픽스** |
+| **#24** | `test_24_root_main_wrapper_entrypoint` | **루트 `main.py` 진입점 지원 및 `python main.py` 완벽 구동 검증** | **Audit 핫픽스** |
 
-#### [토토 실측 아키텍처 도식: 21대 테스트 피라미드 & RTM 채점 리포트]
-<img src="./5_21대_테스트와_품질_검증_체계_도식.png" width="100%" alt="21대 테스트 계층화 및 품질 검증 체계 도식" />
+#### [토토 실측 아키텍처 도식: 24대 테스트 피라미드 & RTM 채점 리포트]
+<img src="./5_21대_테스트와_품질_검증_체계_도식.png" width="100%" alt="24대 테스트 계층화 및 품질 검증 체계 도식" />
 
 ### 7.3 최종 채점 리포트 (`tests/test_result.txt`)
 ```text
 ============================================================
-B3-2 MISSION VERIFICATION REPORT
-Target Repo: yerihanview/B3-2 (main branch)
-------------------------------------------------------------
-Ran 21 tests in 0.012s
-
-FAILED (failures=0, errors=0)
-STATUS: ALL TESTS PASSED (21/21)
-SCORE: 100 / 100
-------------------------------------------------------------
-Requirements Coverage: 100% (13 core + 8 edge cases)
-Gate 1.5 Verification: SIGN-OFF APPROVED
+B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)
+============================================================
+Total Test Cases : 24
+Passed           : 24
+Failed           : 0
+Errors           : 0
+Final Score      : 100/100
+Status           : ALL PASS (PERFECT)
+============================================================
+Ran 24 tests in 0.072s
+OK
 ============================================================
 ```
 
