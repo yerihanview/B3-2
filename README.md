@@ -37,7 +37,8 @@ B3-2/
 │   ├── TECHNICAL_GUIDE.md  # 20종 도식 기반 탑다운 종합 기술 해설서
 │   └── *.png               # 개념 인포그래픽 14종 + 시스템 실측 도식 6종
 ├── tests/
-│   ├── verify.py           # 공식 요구사항 21대 전수 기계 채점기 (100점 테스트 스위트)
+│   ├── verify_code.py      # 공식 요구사항 25대 전수 기계 채점기 (100점 테스트 스위트)
+│   ├── verify.py           # 하위 호환 프록시 어댑터 (verify_code.py 호출)
 │   └── test_result.txt     # 기계 채점 실행 결과 보고서 (자동 생성)
 └── src/
     ├── __init__.py         # 패키지 네임스페이스
@@ -238,11 +239,11 @@ python src/main.py pr --max-tokens 300 > /tmp/pr_300.md
 
 ---
 
-## 8. 독립 기계 채점기 (`verify.py`) 100점 채점 스위트
+## 8. 독립 기계 채점기 (`verify_code.py`) 100점 채점 스위트
 
-공식 요구사항을 100% 전수 검증하기 위해, 외부 의존성 없이 모의(Mock) 환경에서 즉시 실행되는 **21대 독립 테스트 스위트**를 제공합니다.
+공식 요구사항을 100% 전수 검증하기 위해, 외부 의존성 없이 모의(Mock) 환경에서 즉시 실행되는 **25대 독립 테스트 스위트**를 제공합니다.
 
-### 21대 기계 검증 항목
+### 25대 기계 검증 항목
 1. **Git 수집 검증**: `GitManager` 인터페이스 완비 및 정상 Git 저장소 판별 기능 모의 검증.
 2. **Safe-Mode 마스킹 검증**: `OPENAI_API_KEY` 및 민감 토큰 정규식 마스킹 정상 치환.
 3. **Diff 절단 검증**: 500라인 초과 diff의 안전한 상한 절단 동작.
@@ -271,7 +272,8 @@ python src/main.py pr --max-tokens 300 > /tmp/pr_300.md
 
 ### 원클릭 채점 실행
 ```bash
-python tests/verify.py
+python tests/verify_code.py
+# (하위 호환 지원: python tests/verify.py 실행도 동일하게 지원)
 ```
 > 채점 결과는 콘솔에 출력됨과 동시에 `tests/test_result.txt` 파일에 자동 보존됩니다.
 
@@ -283,7 +285,7 @@ python tests/verify.py
 
 ```bash
 # [Step 1] 독립 기계 채점기 1초 검증 (25대 항목 전수 All Pass, 100점)
-python tests/verify.py
+python tests/verify_code.py
 
 # [Step 2] 시연용 변경 만들기
 printf 'demo\n' >> DEMO.md

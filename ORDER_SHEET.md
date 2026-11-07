@@ -52,8 +52,8 @@ Git 변경사항(`git status`, `git diff`)을 수집하여 OpenAI API를 통해 
   - 드라이런: `--- Dry Run Preview ---` ~ `-----------------------`
 - [x] **[RTM #24] 루트 `main.py` 래퍼 지원**: 프로젝트 루트에서 `python main.py` 및 패키지 `python src/main.py` 100% 호환.
 
-### [DoD-6] 기계 검증 통과 (`tests/verify.py`)
-- [x] 독립 채점기 `python tests/verify.py`의 **24대 검증 항목 전수 100점(Exit Code 0)** 통과.
+### [DoD-6] 기계 검증 통과 (`tests/verify_code.py`)
+- [x] 독립 채점기 `python tests/verify_code.py`의 **25대 검증 항목 전수 100점(Exit Code 0)** 통과 (하위 호환 `tests/verify.py` 병행 지원).
 - [x] 실행 결과 리포트 `tests/test_result.txt` 자동 생성 및 보존.
 
 ---
@@ -64,7 +64,7 @@ Git 변경사항(`git status`, `git diff`)을 수집하여 OpenAI API를 통해 
 - [ ] 단일 책임 원칙(SRP) 준수 및 3단계 초과 중첩(Deep Nesting) 금지.
 - [ ] 매직 넘버 금지 (`MAX_DIFF_LINES = 500`, `MAX_COMMIT_TITLE_LEN = 72`, `MAX_PR_TITLE_LEN = 80`).
 - [ ] 모든 함수에 Type Hinting과 Docstring 의무 적용.
-- [ ] `tests/verify.py`에 정의된 24대 인터페이스 시그니처를 임의로 변경하지 말 것.
+- [ ] `tests/verify_code.py`에 정의된 25대 인터페이스 시그니처를 임의로 변경하지 말 것.
 
 ---
 
