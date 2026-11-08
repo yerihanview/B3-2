@@ -298,29 +298,78 @@ python tests/verify_code.py
 
 ---
 
-## 🚀 9. 동료평가자용 3분 퀵스타트 시연 시나리오
+## 🚀 9. 동료평가 시연 시나리오 (단계별 복붙 발표 가이드)
 
-동료평가자께서는 터미널에서 아래 4단계 명령어를 복사·붙여넣기하여 프로젝트의 모든 핵심 기능(25대 테스트, 임의 코드 변경 커밋 생성, PR 생성, Safe-Mode 마스킹, 미추적 파일 감지)을 3분 이내에 완벽히 검증하실 수 있습니다.  
-(원클릭 자동 실행을 원하실 경우 루트의 `bash demo.sh` 스크립트를 실행하셔도 동일한 전체 시연이 자동으로 수행됩니다.)
+동료평가 발표 시 터미널에서 아래 6단계를 하나씩 복사·붙여넣기하며 B3-2의 전체 기능이 개발자의 실제 작업 라이프사이클 속에서 자연스럽게 흘러가는 모습을 시연하고 설명하실 수 있습니다.  
+(엔터(Enter)를 누를 때마다 단계별 설명과 함께 순차 진행되는 대화형 스크립트를 원하실 경우 루트의 `bash demo.sh`를 실행하셔도 동일한 6단계 시연이 완벽히 지원됩니다.)
 
-### [Step 0] 제반 환경 준비 (API 키 설정 또는 무과금 Dry-Run 준비)
-코디세이 무료 Public API 키 또는 OpenAI 키를 `.env` 파일에 설정합니다. (키가 없어도 `--dry-run`으로 모든 기능 검증 가능)
+> 💡 **참고**: 내부 검증 기준인 `tests/verify_code.py` 25대 항목 전수 검증은 시연 대본과 무관한 내부 채점 스위트이므로 제8장을 참조하시기 바랍니다.
+
+---
+
+### [Step 0] 사전 환경 확인 (선택 사항)
+코디세이 무료 Public API 키 또는 OpenAI 키가 `.env` 파일에 설정되어 있으면 실제 AI 커밋/PR 생성이 호출되며, 키가 없는 환경이라도 `--dry-run` 플래그를 통해 과금 0원에 모든 보안·포맷 기능을 100% 검증하실 수 있습니다.
 ```bash
-# .env 파일 생성 (.gitignore에 의해 커밋되지 않음)
+# 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
 cat << 'EOF' > .env
 OPENAI_API_KEY=sk-cody-live-your-key-here
 OPENAI_BASE_URL=https://copa.codyssey.kr/v1
 EOF
 ```
 
-### [Step 1] 독립 기계 채점기 1초 검증 (25대 항목 전수 All Pass, 100점)
-```bash
-python tests/verify_code.py
-# 기대 결과: 25개 테스트 100점 All Pass (0.1초 소요)
-```
+---
 
-### [Step 2] 시연에 사용될 임의의 파일 변경 제반 환경 준비 (현실적 Python 유틸리티 코드)
-AI가 실제 동작 맥락을 파악하고 시맨틱 커밋 메시지와 PR을 작성할 수 있도록 의미 있는 함수 2개를 포함한 임의의 코드 파일을 생성합니다:
+### [Step 1] 변경 사항 없음 (Empty Diff) 정상 방어 시연
+- 📌 **발표 설명 멘트**: "작업 트리에 아무런 변경 사항이 없을 때, 예외로 뻗지 않고 친절한 안내를 출력하며 정상 종료(Exit Code 0)합니다."
+- 💻 **실행 명령어**:
+```bash
+python main.py commit
+```
+- 🔍 **확인 포인트**: `"No changes in the selected diff. Stage new files with git add first."` 안내가 출력되고 에러 없이 종료됨을 확인합니다.
+
+---
+
+### [Step 2] 신규 파일 생성 및 미추적 파일(Untracked File) 지능형 감지 시연
+- 📌 **발표 설명 멘트**: "새 파일을 만들고 `git add`를 깜빡했을 때, `git diff`는 비어있지만 미추적 파일(`??`)을 지능적으로 감지하여 `git add`를 유도합니다."
+- 💻 **실행 명령어**:
+```bash
+touch demo_untracked_sample.py
+python main.py commit
+rm -f demo_untracked_sample.py
+```
+- 🔍 **확인 포인트**: `No changes in the selected diff, but untracked files were detected: ? demo_untracked_sample.py. Please stage new files with 'git add <file>' first.` 안내가 출력됨을 확인합니다.
+
+---
+
+### [Step 3] 현실적 코드 작성 및 Safe-Mode 민감정보 자동 마스킹 시연 (과금 0원 Dry-Run)
+- 📌 **발표 설명 멘트**: "시연용 수학 유틸리티 모듈(`demo_calculator.py`)을 작성하고 실수로 하드코딩된 API 키를 포함시킵니다. 외부 AI 프롬프트로 전송되기 전 Safe-Mode에 의해 `[MASKED]`로 자동 치환되는 보안 안전성을 검증합니다."
+- 💻 **실행 명령어**:
+```bash
+cat << 'EOF' > demo_calculator.py
+"""시연용 수학 유틸리티 모듈"""
+
+def add(a: int, b: int) -> int:
+    """두 정수의 합을 계산합니다."""
+    return a + b
+
+def multiply(a: int, b: int) -> int:
+    """두 정수의 곱을 계산합니다."""
+    return a * b
+
+# 실수로 하드코딩된 민감정보 (Safe-Mode 마스킹 시연용)
+AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
+GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
+EOF
+
+python main.py commit --dry-run
+```
+- 🔍 **확인 포인트**: Diff 미리보기에서 `AWS_SECRET_KEY`와 `GITHUB_TOKEN` 문자열이 `[MASKED]`로 안전하게 치환되어 원천적으로 정보 유출이 차단됨을 육안으로 확인합니다.
+
+---
+
+### [Step 4] 작업 중(Unstaged) 커밋 메시지 자동 생성 시연
+- 📌 **발표 설명 멘트**: "민감정보를 제거하고 정상적인 유틸리티 코드로 완성한 뒤, `git add` 없이 작업 중(Unstaged diff) 상태에서 시맨틱 커밋 메시지를 자동 생성합니다."
+- 💻 **실행 명령어**:
 ```bash
 cat << 'EOF' > demo_calculator.py
 """시연용 수학 유틸리티 모듈"""
@@ -333,72 +382,48 @@ def multiply(a: int, b: int) -> int:
     """두 정수의 곱을 계산합니다."""
     return a * b
 EOF
-```
 
-### [Step 3] 4대 핵심 기능 실전 시연
-
-#### 3-1. 미스테이징(Unstaged) 커밋 메시지 자동 생성 (기본 모드)
-`git add`를 하지 않은 작업 트리 변경사항을 자동으로 감지하여 Conventional Commits 메시지를 생성합니다:
-```bash
-# 코디세이 API 사용 시 (최소 토큰 gemini-3-flash 권장)
+# 코디세이 무료 API 사용 시 (최소 토큰 gemini-3-flash 권장)
 python main.py commit --model gemini-3-flash
 
-# OpenAI 공식 API 사용 시
-python main.py commit
+# (참고: API 키가 없는 환경일 경우: python main.py commit --dry-run)
 ```
-> **기대 결과**: `--- Commit Message ---` 구획선 안에 `feat: add math utility functions for addition and multiplication`과 같은 시맨틱 헤더와 본문이 명확히 출력됩니다.
-
-#### 3-2. 스테이징(Staged) 기반 구조화 PR 설명 자동 생성 (`--staged`, `--pr`)
-변경 파일을 스테이징 영역에 추가하고 상세 PR 문서를 생성합니다:
-```bash
-git add demo_calculator.py
-
-# PR 초안 생성 (Why / What / How to Test 3대 섹션 및 불릿 구조)
-python main.py pr --staged --temperature 0.2 --max-tokens 1500 --model gemini-3-flash
-```
-> **기대 결과**: `--- PR Title ---` 및 `--- PR Body ---` 구획선과 함께 `### Why`, `### What`, `### How to Test` 각 섹션별 최소 1개 이상의 불릿(`- `)이 엄격하게 지켜진 완벽한 PR 템플릿이 출력됩니다.
-
-#### 3-3. Safe-Mode 민감정보 자동 마스킹 실측 (보안 검증 / 과금 0원 Dry-Run)
-코드에 실수로 하드코딩될 수 있는 API Key와 토큰을 추가한 뒤, 외부 AI 프롬프트 전송 전 완벽히 마스킹되는지 검증합니다:
-```bash
-# 가짜 민감정보 삽입
-cat << 'EOF' >> demo_calculator.py
-
-# 민감정보 테스트 (Safe-Mode 검증용)
-AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
-GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
-EOF
-
-# Dry-Run 프리뷰로 마스킹 실측 (API 호출 및 과금 0원)
-python main.py commit --dry-run
-```
-> **기대 결과**: Diff 미리보기에서 API Key와 토큰이 `[MASKED]`로 안전하게 치환되어 원천적으로 유출이 차단됨을 육안으로 확인하실 수 있습니다.
-
-#### 3-4. 미추적 파일(Untracked File) 지능형 감지 안내
-신규 파일이 스테이징되지 않았을 때의 친절한 에러 핸들링을 확인합니다:
-```bash
-git reset HEAD demo_calculator.py >/dev/null 2>&1
-git checkout -- demo_calculator.py
-touch demo_untracked_test.py
-
-python main.py commit
-```
-> **기대 결과**: "No changes in the selected diff, but untracked files were detected: ? demo_untracked_test.py. Please stage new files with 'git add <file>' first." 친절한 안내가 출력됩니다.
-
-### [Step 4] 시연 종료 후 1초 원상복구 (Zero-Artifact Clean-up)
-시연에 사용된 임의 파일과 임시 설정 파일을 깔끔하게 정리하여 저장소를 클론 직후의 100% 무결점 상태로 즉시 복원합니다:
-```bash
-rm -f demo_calculator.py demo_untracked_test.py .env
-git checkout -- .
-git status  # "working tree clean" 확인
-```
+- 🔍 **확인 포인트**: `--- Commit Message ---` 구획선 안에 `feat: add math utility functions for addition and multiplication`과 같은 시맨틱 커밋 헤더와 본문이 명확히 출력됨을 확인합니다.
 
 ---
 
-### 💡 팁: 원클릭 자동 시연 스크립트 (`demo.sh`)
-위의 Step 1부터 Step 4까지의 전 과정을 터미널에 일일이 입력하지 않고 한 번에 실행하고 뒷정리까지 마치려면 아래 명령어를 실행하세요:
+### [Step 5] 스테이징(Staged) 및 파라미터 제어 PR 설명서 자동 생성 시연
+- 📌 **발표 설명 멘트**: "`git add demo_calculator.py`로 스테이징 영역에 올린 뒤, 온도(`--temperature`)와 토큰 상한(`--max-tokens`)을 제어하여 Why / What / How to Test 3대 구조화 섹션과 불릿이 완비된 PR 문서를 생성합니다."
+- 💻 **실행 명령어**:
+```bash
+git add demo_calculator.py
+
+# PR 초안 생성 (3대 섹션 및 불릿 강제)
+python main.py pr --staged --temperature 0.2 --max-tokens 1500 --model gemini-3-flash
+
+# (참고: API 키가 없는 환경일 경우: python main.py pr --staged --dry-run --temperature 0.2 --max-tokens 1500)
+```
+- 🔍 **확인 포인트**: `--- PR Title ---` 및 `--- PR Body ---` 구획선과 함께 `### Why`, `### What`, `### How to Test` 각 섹션별 최소 1개 이상의 불릿(`- `)이 완벽하게 지켜진 PR 문서가 출력됨을 확인합니다.
+
+---
+
+### [Step 6] 시연 종료 및 1초 원상복구 (Zero-Artifact Clean-up)
+- 📌 **발표 설명 멘트**: "시연에 사용된 임의 코드 파일을 삭제하고 저장소를 클론 직후의 100% 무결점 상태로 즉시 복원합니다."
+- 💻 **실행 명령어**:
+```bash
+git reset HEAD demo_calculator.py >/dev/null 2>&1
+rm -f demo_calculator.py
+git status
+```
+- 🔍 **확인 포인트**: `nothing to commit, working tree clean` 상태로 깨끗하게 원상복구됨을 확인합니다.
+
+---
+
+### 💡 팁: 대화형 엔터 시연 스크립트 (`demo.sh`)
+명령어를 일일이 복사·붙여넣기하지 않고, 화면의 안내와 명령어를 보면서 **[엔터]를 누를 때마다 위 6단계가 하나씩 실행**되는 인터랙티브 시연 스크립트를 제공합니다:
 ```bash
 bash demo.sh
 ```
-
-> **기대 결과**: 25개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `--- Commit Message ---` 또는 `--- PR Title ---` / `--- PR Body ---` 구획선과 `### Why` / `### What` / `### How to Test` 불릿 구조를 완벽하게 만족합니다.
+- 각 단계별로 실행 명령어와 발표 포인트가 색상 배너로 표시되고, `[엔터]`를 누르면 실제 실행됩니다.
+- API 키가 감지되면 실제 생성을 호출하고, 미설정 시 안전하게 `--dry-run` 모드로 자동 시연합니다.
+- 시연 중 언제 중단하더라도 임시 파일이 자동 정리되어 Git 워킹 트리가 항상 깨끗하게 유지됩니다.
