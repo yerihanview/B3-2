@@ -2,19 +2,19 @@
 
 > **코디세이 AI 올인원 2기 실전 미션 B3-2**  
 > **총괄 아키텍트**: 우광택 (@yerihanview)  
-> **개발 방법론**: 린 에이전틱 3자 분업 (수석 아키텍트 - 참모 토토 - 에디터 챗GPT)  
-> **산출물 구성**: 개념 인포그래픽 14종 (챗GPT) + 시스템 실측 도식 6종 (토토) = **총 20종 완전 수록**
+> **시스템**: AI Git Helper CLI (Conventional Commits & Pull Request Generator)  
+> **산출물 구성**: 개념 인포그래픽 및 시스템 실측 아키텍처 도식 수록
 
 ---
 
 ## 📌 문서 개요 및 목차 (Top-Down Overview)
 
-본 문서는 개발자가 작업한 코드 변경사항(`git diff`)을 안전하게 수집하고, 대규모 언어 모델(OpenAI API)을 연동하여 시맨틱 커밋 메시지와 구조화된 PR 초안을 자동 생성하는 **B3-2 AI Git Helper**의 엔지니어링 해설서입니다.
+본 문서는 개발자가 작업한 코드 변경사항(`git diff`)을 안전하게 수집하고, 대규모 언어 모델(OpenAI API 및 호환 게이트웨이)을 연동하여 시맨틱 커밋 메시지와 구조화된 PR 초안을 자동 생성하는 **B3-2 AI Git Helper**의 엔지니어링 해설서입니다.
 
-수석 아키텍트 우광택 님의 지도 아래, **"개념 학습을 돕는 챗GPT의 인포그래픽"**과 **"코드 가독성을 극대화하는 토토의 실측 아키텍처 도식"**을 1:1로 결합하여 시스템의 최상위 아키텍처부터 최하단 if문 검증 로직까지 단계적으로 설명합니다.
+시스템의 최상위 아키텍처부터 Git 파이프라인, 보안 마스킹, LLM 하이퍼파라미터 제어, 프롬프트 검증, 지수 백오프 에러 핸들링까지 단계별로 설명합니다.
 
 ### 📑 탑다운 목차
-- [1장. 시스템 개요 및 린 에이전틱 아키텍처 (System Architecture)](#1장-시스템-개요-및-린-에이전틱-아키텍처)
+- [1장. 시스템 개요 및 소프트웨어 아키텍처 (System Architecture)](#1장-시스템-개요-및-소프트웨어-아키텍처)
   - 1.1 단일 책임 원칙(SRP)에 따른 4대 모듈 분리
   - 1.2 전체 런타임 통신 흐름
   - 1.3 LLM과 프롬프트의 처리 생명주기
@@ -27,7 +27,7 @@
   - 3.2 CLI 보안 플래그 (`--safe-mode` vs `--no-safe-mode`)
   - 3.3 실제 diff Before & After 코드 실측 비교
 - [4장. LLM 통신 및 하이퍼파라미터 제어 (AI Engine)](#4장-llm-통신-및-하이퍼파라미터-제어)
-  - 4.1 OpenAI REST API 및 Chat Completion JSON 규격
+  - 4.1 OpenAI REST API 및 Chat Completion JSON 규격 (동적 Base URL & .env 지원)
   - 4.2 Temperature(결정론성)와 max_tokens(비용/길이) 제어 전략
   - 4.3 CLI 실행 옵션에 따른 실제 모델 출력 실측 비교
 - [5장. 프롬프트 엔지니어링 및 결정론적 Formatter (Prompt & Validation)](#5장-프롬프트-엔지니어링-및-결정론적-formatter)
@@ -39,34 +39,29 @@
   - 6.1 4대 API 오류 계층화 (`AuthenticationError` vs `RateLimitError` vs `ServerError`)
   - 6.2 401 즉시 종료(Fail Fast) 및 터미널 마스킹 가이드
   - 6.3 지수 백오프(Exponential Backoff) 타임라인 (`time.sleep(2**attempt)`)
-- [7장. 테스트 계층화 및 21대 RTM 품질 검증 (Testing & QA)](#7장-테스트-계층화-및-21대-rtm-품질-검증)
-  - 7.1 3계층 테스트 피라미드와 unittest.mock 격리 기법
-  - 7.2 21대 공식 검증 항목 RTM(Requirements Traceability Matrix) 전수 매핑
-  - 7.3 `tests/test_result.txt` 채점 결과 (21/21 All Pass, 100/100)
-- [8장. 결론 및 린 에이전틱 개발 방법론의 시사점](#8장-결론-및-린-에이전틱-개발-방법론의-시사점)
 
 ---
 
-## 1장. 시스템 개요 및 린 에이전틱 아키텍처
+## 1장. 시스템 개요 및 소프트웨어 아키텍처
 
 B3-2 프로젝트는 외부 서드파티 패키지 의존성 없이 **Python 3.10+ 표준 라이브러리(`urllib`, `argparse`, `subprocess`, `re`, `json`)**만으로 동작하는 초경량·고성능 아키텍처를 채택했습니다.
 
 ### 1.1 단일 책임 원칙(SRP)에 따른 4대 모듈 분리
 전체 시스템은 역할과 책임이 명확히 격리된 4개의 독립 모듈로 구성됩니다:
-- `src/main.py`: CLI 진입점. 명령행 옵션 파싱, 서브커맨드(`commit`/`pr`) 분기, 모듈 간 파이프라인 조율.
-- `src/git_manager.py`: Git 변경 사항 수집. `subprocess`를 통해 working tree 및 staging area의 diff를 무결하게 추출.
-- `src/ai_client.py`: AI API 통신. 시스템/유저 프롬프트 조립, REST 호출, 지수 백오프 및 오류 핸들링.
-- `src/formatter.py`: 출력 포맷팅 및 엄격한 유효성 검증. Conventional Commits 72자, PR 80자 단어 경계 절단, 불릿 강제.
+- `src/git_agent/cli.py` (및 루트 `main.py`): CLI 진입점. 명령행 옵션 파싱, 서브커맨드(`commit`/`pr`) 분기, 모듈 간 파이프라인 조율.
+- `src/git_agent/git_manager.py`: Git 변경 사항 수집. `subprocess`를 통해 working tree 및 staging area의 diff를 무결하게 추출.
+- `src/git_agent/ai_client.py`: AI API 통신. 시스템/유저 프롬프트 조립, REST 호출, 지수 백오프 및 오류 핸들링.
+- `src/git_agent/formatter.py`: 출력 포맷팅 및 엄격한 유효성 검증. Conventional Commits 72자, PR 80자 단어 경계 절단, 불릿 강제.
 
 <img src="./모듈 분리와 데이터 흐름 구조.png" width="100%" alt="Part A. 모듈 분리와 데이터 흐름 구조" />
 
 ### 1.2 전체 런타임 통신 흐름
-사용자가 터미널에서 `$ python src/main.py`를 실행하면, 로컬 시스템의 Git 저장소로부터 diff가 추출되고, Safe-Mode 정제를 거쳐 OpenAI API 서버로 안전하게 전달된 뒤 포맷터를 통해 터미널로 출력됩니다.
+사용자가 터미널에서 `$ python main.py commit` 또는 `pr`을 실행하면, 로컬 시스템의 Git 저장소로부터 diff가 추출되고, Safe-Mode 정제를 거쳐 OpenAI API 서버로 안전하게 전달된 뒤 포맷터를 통해 터미널로 출력됩니다.
 
 <img src="./Python–AI API HTTP Communication Infographic.png" width="100%" alt="Python-AI API HTTP 통신 흐름" />
 
 ### 1.3 LLM과 프롬프트의 처리 생명주기
-AI 모델은 마법 상자가 아니라 확률적 텍스트 생성기입니다. 시스템은 정형화된 규칙(System Prompt)과 작업 대상(User Prompt Diff)을 명확히 분리하여 전달함으로써 모델의 환각(Hallucination)을 최소화합니다.
+AI 모델은 확률적 텍스트 생성기입니다. 시스템은 정형화된 규칙(System Prompt)과 작업 대상(User Prompt Diff)을 명확히 분리하여 전달함으로써 모델의 환각(Hallucination)을 최소화합니다.
 
 <img src="./LLM과 프롬프트 작동 흐름 인포그래픽.png" width="100%" alt="LLM과 프롬프트 작동 흐름" />
 
@@ -86,11 +81,11 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 <img src="./Git diff 비교 인포그래픽.png" width="100%" alt="Git Diff 비교 인포그래픽" />
 
 ### 2.3 Subprocess 안전 실행 및 Empty Diff 방어
-`src/git_manager.py`는 `subprocess.run` 호출 시 `text=True, encoding='utf-8', errors='replace'`를 적용하여 다국어 및 한글 소스코드의 인코딩 깨짐을 원천 차단합니다. 또한 변경사항이 전혀 없는 경우(`raw_diff == ""`) 불필요한 OpenAI API 호출 비용이 발생하는 것을 막기 위해 조기 예외(Early Exit)를 발생시킵니다.
+`src/git_agent/git_manager.py`는 `subprocess.run` 호출 시 `text=True, encoding='utf-8', errors='replace'`를 적용하여 다국어 및 한글 소스코드의 인코딩 깨짐을 원천 차단합니다. 또한 변경사항이 전혀 없는 경우(`raw_diff == ""`) 불필요한 OpenAI API 호출 비용이 발생하는 것을 막기 위해 조기 예외(Early Exit)를 발생시키고 미추적 파일 유무를 감지하여 사용자에게 안내합니다.
 
 <img src="./Python과 Git의 subprocess 실행 흐름.png" width="100%" alt="Python과 Git의 Subprocess 실행 흐름" />
 
-#### [토토 실측 아키텍처 도식: Git Diff 파이프라인 & Hunk 해부]
+#### [시스템 실측 아키텍처 도식: Git Diff 파이프라인 & Hunk 해부]
 <img src="./4_Git_Diff_수집과_Subprocess_파이프라인_도식.png" width="100%" alt="Git Diff 수집 및 Subprocess 파이프라인 도식" />
 
 ---
@@ -100,7 +95,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 ### 3.1 2단계 보안 가드 파이프라인
 개발자가 무심코 작성한 소스코드에는 OpenAI API Key, AWS 시크릿, 데이터베이스 비밀번호 같은 치명적인 인증 정보가 포함될 수 있습니다. B3-2는 diff를 외부 LLM API로 전송하기 직전, 2단계 보안 가드를 필수로 거칩니다.
 1. **1단계: 정규식 마스킹 (Regex Masking)**:
-   - `sk-[a-zA-Z0-9](20,)` -> `[MASKED]`
+   - `sk-[a-zA-Z0-9]{20,}` -> `[MASKED]`
    - `Bearer\s+[a-zA-Z0-9_.-]+` -> `Bearer [MASKED]`
    - `(password|secret)\s*=\s*["'].*["']` -> `\1 = "[MASKED]"`
 2. **2단계: 라인 절단 (Line Truncation)**:
@@ -110,7 +105,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 - `--safe-mode` (기본값 ON): 마스킹과 500줄 절단이 상시 가동됩니다.
 - `--no-safe-mode` (명시적 해제): 보안 필터를 해제하고 원본 diff를 그대로 전송합니다. 해제 시 사용자가 인지할 수 있도록 `stderr`에 명확한 보안 경고 로그를 출력합니다.
 
-#### [토토 실측 아키텍처 도식: Safe-Mode 2단계 파이프라인 & Before vs After 실측 비교]
+#### [시스템 실측 아키텍처 도식: Safe-Mode 2단계 파이프라인 & Before vs After 실측 비교]
 <img src="./Safe-Mode_보안_아키텍처_도식.png" width="100%" alt="Safe-Mode 보안 아키텍처 및 데이터 흐름 도식" />
 
 ---
@@ -118,7 +113,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 ## 4장. LLM 통신 및 하이퍼파라미터 제어
 
 ### 4.1 OpenAI REST API 및 Chat Completion JSON 규격 (동적 Base URL & .env 지원)
-`src/ai_client.py`는 기본 `https://api.openai.com/v1/chat/completions` 엔드포인트뿐만 아니라, `OPENAI_BASE_URL` 환경변수 또는 `--api-base` CLI 플래그를 통해 코디세이 Public API(`https://copa.codyssey.kr/v1`) 등 임의의 OpenAI 호환 API 게이트웨이에 유연하게 `POST` 요청을 전송합니다. 순수 파이썬 내장 `.env` 로더를 통해 프로젝트 루트의 `.env` 파일을 자동으로 감지하며, 외부 의존성(requests 등) 없이 순수 `urllib.request`로 JSON 페이로드를 직렬화하여 전송합니다.
+`src/git_agent/ai_client.py`는 기본 `https://api.openai.com/v1/chat/completions` 엔드포인트뿐만 아니라, `OPENAI_BASE_URL` 환경변수 또는 `--api-base` CLI 플래그를 통해 코디세이 Public API(`https://copa.codyssey.kr/v1`) 등 임의의 OpenAI 호환 API 게이트웨이에 유연하게 `POST` 요청을 전송합니다. 순수 파이썬 내장 `.env` 로더를 통해 프로젝트 루트의 `.env` 파일을 자동으로 감지하며, 외부 의존성(requests 등) 없이 순수 `urllib.request`로 JSON 페이로드를 직렬화하여 전송합니다.
 
 <img src="./B2 HTTP와 REST API 인포그래픽.png" width="100%" alt="B2. HTTP와 REST API 인포그래픽" />
 
@@ -128,7 +123,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 
 <img src="./B5_ Temperature와 Max Tokens 인포그래픽.png" width="100%" alt="B5. Temperature와 Max Tokens 인포그래픽" />
 
-#### [토토 실측 아키텍처 도식: CLI 파라미터 매핑 & 실측 출력 비교]
+#### [시스템 실측 아키텍처 도식: CLI 파라미터 매핑 & 실측 출력 비교]
 아래 도식은 동일한 5,871자 프롬프트에 대해 `temp=0.2 / max_tokens=1500` 실행과 `temp=0.8 / max_tokens=200` 실행 시 실제 터미널 출력 및 토큰 소진 양상을 실측 대조한 결과입니다.
 
 <img src="./1_Temperature_Tokens_파라미터_제어_도식.png" width="100%" alt="Temperature & max_tokens 하이퍼파라미터 제어 도식" />
@@ -145,7 +140,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 <img src="./C1 프롬프트 설계 원칙 인포그래픽.png" width="100%" alt="C1. 프롬프트 설계 원칙 인포그래픽" />
 
 ### 5.2 AI 출력 형식 검증 및 Formatter 유효성 검사
-아무리 프롬프트에 "제목 72자 준수", "불릿 필수"를 강조해도, 확률적 모델인 LLM은 이를 어길 수 있습니다. 따라서 **파이썬 코드 레벨의 결정론적 Formatter(`src/formatter.py`)가 최후의 방어선**이 되어야 합니다.
+아무리 프롬프트에 "제목 72자 준수", "불릿 필수"를 강조해도, 확률적 모델인 LLM은 이를 어길 수 있습니다. 따라서 **파이썬 코드 레벨의 결정론적 Formatter(`src/git_agent/formatter.py`)가 최후의 방어선**이 되어야 합니다.
 1. **커밋 제목 72자 검증**: Conventional Commits 접두어(`feat:`, `fix:`)를 확인하고 72자 이내인지 엄격 검사.
 2. **PR 제목 80자 단어 경계 절단 (`truncate_to_word_boundary`)**: 단순 슬라이싱(`[:80]`)으로 단어가 잘려 가독성을 해치는 현상을 방지하고, 마지막 공백 기준으로 깔끔하게 절단.
 3. **PR 3대 섹션 및 섹션별 최소 1개 불릿 강제**: `Why`, `What`, `How to Test` 섹션이 존재하더라도 내용에 `-` 또는 `*` 불릿이 0개인 '빈 껍데기'인 경우 `ValueError`를 발생시켜 즉시 거부(Reject).
@@ -158,7 +153,7 @@ B3-2는 **"단어 경계 절단 및 공백 정리는 후처리"**로 해결하�
 
 <img src="./C3 재생성과 후처리 전략 인포그래픽.png" width="100%" alt="C3. 재생성과 후처리 전략 인포그래픽" />
 
-#### [토토 실측 아키텍처 도식: Formatter 분리 & 불릿 거부 코드 해부]
+#### [시스템 실측 아키텍처 도식: Formatter 분리 & 불릿 거부 코드 해부]
 <img src="./2_Prompt_Formatter_분리_아키텍처_도식.png" width="100%" alt="프롬프트(LLM)와 포맷터(Python) 분리 및 검증 도식" />
 
 ---
@@ -179,79 +174,7 @@ B3-2는 **"단어 경계 절단 및 공백 정리는 후처리"**로 해결하�
 
 <img src="./B6 API 오류 처리와 재시도 인포그래픽.png" width="100%" alt="B6. API 오류 처리와 재시도 인포그래픽" />
 
-#### [토토 실측 아키텍처 도식: 지수 백오프 타임라인 & 401 터미널 마스킹 실측]
+#### [시스템 실측 아키텍처 도식: 지수 백오프 타임라인 & 401 터미널 마스킹 실측]
 아래 도식은 401 인증 실패 시 불필요한 백오프 루프를 돌지 않고 0.05초 만에 Fail Fast로 종료하며, 상세 에러 메시지 내의 API 키까지 마스킹하여 출력하는 실제 터미널 화면을 보여줍니다.
 
 <img src="./3_API_오류_계층과_지수_백오프_도식.png" width="100%" alt="API 오류 계층화 및 지수 백오프 도식" />
-
----
-
-## 7장. 테스트 계층화 및 21대 RTM 품질 검증
-
-### 7.1 3계층 테스트 피라미드와 unittest.mock 격리 기법
-테스트는 외부 API 과금이나 네트워크 상태에 영향을 받지 않아야 합니다. `tests/verify.py`는 `unittest.mock.patch('urllib.request.urlopen')`을 활용해 OpenAI 서버 응답을 완벽히 모킹(Mocking)하여, 인터넷이 연결되지 않은 환경에서도 0.012초 만에 전체 테스트를 수행합니다.
-
-<img src="./B3-2_D3_테스트와_품질검증_도식.png" width="100%" alt="D3. 테스트와 품질 검증 도식" />
-
-### 7.2 21대 공식 검증 항목 RTM 전수 매핑
-수석 아키텍트 우광택 님의 지침에 따라, 코디세이 공식 루브릭과 챗GPT 교차 감사에서 지적된 5대 보완 항목을 전수 반영하여 검증 스위트를 10개에서 **21대 검증 항목**으로 전면 확장했습니다.
-
-| 검증 번호 | 테스트 함수명 | 검증 핵심 내용 | 반영 차원 |
-| :---: | :--- | :--- | :---: |
-| **#1** | `test_01_commit_generation` | Conventional Commits 형식 생성 기본 동작 | Core |
-| **#2** | `test_02_pr_generation` | PR Why/What/How to Test 생성 동작 | Core |
-| **#3** | `test_03_temperature_option` | `--temperature` CLI 옵션의 API 페이로드 주입 | Parameter |
-| **#4** | `test_04_max_tokens_option` | `--max-tokens` CLI 옵션의 API 페이로드 주입 | Parameter |
-| **#5** | `test_05_commit_title_72_chars` | 커밋 제목 최대 72자 유효성 검사 | Formatter |
-| **#6** | `test_06_safe_mode_masking` | OpenAI 키, 토큰, 비밀번호 정규식 마스킹 | Security |
-| **#7** | `test_07_safe_mode_truncation` | 500줄 초과 diff의 지능적 절단 | Security |
-| **#8** | `test_08_empty_diff_handling` | 변경사항 없음(Empty diff) 조기 방어 | Edge Case |
-| **#9** | `test_09_pr_sections_validation` | PR 필수 3대 섹션 존재 유효성 검증 | Formatter |
-| **#10** | `test_10_model_option` | `--model` 옵션 변경 지원 | Parameter |
-| **#11** | `test_11_pr_bullet_required` | **PR 섹션별 불릿 1개 이상 필수 강제 (0개 시 즉시 거부)** | **Audit 핫픽스** |
-| **#12** | `test_12_pr_title_word_boundary` | **PR 제목 80자 단어 경계 보존 절단 (`truncate_to_word_boundary`)** | **Audit 핫픽스** |
-| **#13** | `test_13_safe_mode_cli_flag` | **`--safe-mode` / `--no-safe-mode` CLI 플래그 상호 배타 제어** | **Audit 핫픽스** |
-| **#14** | `test_14_auth_error_no_retry` | **401/403 인증 실패 시 재시도 없이 즉시 중단 (Fail Fast)** | **Audit 핫픽스** |
-| **#15** | `test_15_rate_limit_backoff` | **429 RateLimit 발생 시 지수 백오프 [1s, 2s] 실제 대기 검증** | **Audit 핫픽스** |
-| **#16** | `test_16_server_error_backoff` | 5xx 서버 에러 백오프 후 복구 및 최종 실패 검증 | Resilience |
-| **#17** | `test_17_network_error_handling` | 소켓 단절 및 타임아웃 예외 격리 검증 | Resilience |
-| **#18** | `test_18_subcommand_parsing` | `python src/main.py commit/pr` 서브커맨드 파싱 호환성 | CLI UX |
-| **#19** | `test_19_pr_subcommand_e2e` | `pr` 서브커맨드 실행 시 전체 E2E 파이프라인 검증 | E2E |
-| **#20** | `test_20_auth_exit_code_1` | 인증 실패 시 프로세스 종료 코드 1 검증 | Production |
-| **#21** | `test_21_no_safe_mode_unmasked` | `--no-safe-mode` 설정 시 원본 diff 전송 검증 | Security |
-| **#22** | `test_22_output_delimiter_sections` | **공식 미션지 구획화(`--- Commit Message ---`, `--- PR Title/Body ---`) 검증** | **Audit 핫픽스** |
-| **#23** | `test_23_untracked_files_guidance` | **diff 부재 시 미추적 파일(`??`) 감지 및 `git add` 유도 안내 검증** | **Audit 핫픽스** |
-| **#24** | `test_24_root_main_wrapper_entrypoint` | **루트 `main.py` 진입점 지원 및 `python main.py` 완벽 구동 검증** | **Audit 핫픽스** |
-
-#### [토토 실측 아키텍처 도식: 24대 테스트 피라미드 & RTM 채점 리포트]
-<img src="./5_21대_테스트와_품질_검증_체계_도식.png" width="100%" alt="24대 테스트 계층화 및 품질 검증 체계 도식" />
-
-### 7.3 최종 채점 리포트 (`tests/test_result.txt`)
-```text
-============================================================
-B3-2 MISSION VERIFICATION REPORT (100% RUBRIC COMPLIANCE)
-============================================================
-Total Test Cases : 24
-Passed           : 24
-Failed           : 0
-Errors           : 0
-Final Score      : 100/100
-Status           : ALL PASS (PERFECT)
-============================================================
-Ran 24 tests in 0.072s
-OK
-============================================================
-```
-
----
-
-## 8장. 결론 및 린 에이전틱 개발 방법론의 시사점
-
-B3-2 미션을 완수하며 수석 아키텍트 우광택 님과 함께 확립한 핵심 교훈은 다음과 같습니다:
-
-1. **Gate 1.5 교차 검증의 절대적 가치 (Shift-Left QA)**:
-   기획·설계 단계에서 Order Sheet 작성 시 원문 루브릭을 전수 발췌하지 않고 임의로 요약하면, 검증기(`verify.py`)조차 편향에 빠져 "자체 채점기는 100점이지만 공식 평가에서는 감점되는 자가당착"이 발생합니다. 코딩 시작 전 챗GPT가 미션지와 Order Sheet를 1:1 대조하는 Gate 1.5를 둠으로써 무결점을 사전 확보했습니다.
-2. **개념 도식(챗GPT)과 코드 실측 도식(토토)의 상호 보완성**:
-   개념 인포그래픽으로 시스템의 원리와 철학을 먼저 이해하고, 라인 번호와 if문이 적힌 코드 실측 도식으로 소스코드를 따라갈 때 비로소 타인이 보아도 한눈에 읽히는 완벽한 기술 문서화가 완성됩니다.
-3. **무의존성 결정론적 파이썬 엔지니어링**:
-   프롬프트 지시사항에만 기대지 않고, 파이썬 Formatter와 지수 백오프 루프를 통해 결정론적 제약을 강제함으로써 외부 API의 불확실성을 완벽히 통제하는 프로덕션 레벨 도구를 완성했습니다.
