@@ -11,7 +11,7 @@ from typing import Final
 MAX_DIFF_LINES: Final = 500
 API_TIMEOUT: Final = 30
 MAX_API_ATTEMPTS: Final = 3
-API_URL: Final = "https://api.openai.com/v1/chat/completions"
+DEFAULT_BASE_URL: Final = "https://api.openai.com/v1"
 AUTH_STATUS: Final = (401, 403)
 MASK: Final = "[MASKED]"
 DETAIL_MAX_CHARS: Final = 200
@@ -43,17 +43,38 @@ class AIClient:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gpt-4o-mini",
+        base_url: str | None = None,
+        model: str | None = None,
         temperature: float = 0.2,
         max_tokens: int = 1000,
         safe_mode: bool = True,
     ) -> None:
         """Resolve credentials, configure generation parameters, and set the masking mode."""
-        self._api_key = api_key if api_key is not None else os.getenv("OPENAI_API_KEY", "")
-        self._model = model
+        self._api_key = (
+            api_key
+            if api_key is not None
+            else (os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY") or "")
+        )
+        raw_base = (
+            base_url
+            if base_url is not None
+            else (os.getenv("OPENAI_BASE_URL") or os.getenv("AI_API_BASE_URL") or DEFAULT_BASE_URL)
+        )
+        self._base_url = raw_base.rstrip("/")
+        self._api_url = f"{self._base_url}/chat/completions"
+        default_model = os.getenv("AI_MODEL") or "gpt-4o-mini"
+        self._model = model if model is not None else default_model
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._safe_mode = safe_mode
+
+    @property
+    def base_url(self) -> str:
+        return self._base_url
+
+    @property
+    def api_url(self) -> str:
+        return self._api_url
 
     @property
     def model(self) -> str:
@@ -134,7 +155,7 @@ class AIClient:
             )
         else:
             guidance = (
-                "Authentication failed (HTTP 401): OPENAI_API_KEY is missing, invalid, or revoked. "
+                "Authentication failed (HTTP 401): OPENAI_API_KEY (or AI_API_KEY) is missing, invalid, or revoked. "
                 "Set a valid key in the environment and retry."
             )
         return f"{guidance} Detail: {detail}" if detail else guidance
@@ -167,7 +188,7 @@ class AIClient:
     def _request(self, instruction: str, prompt: str) -> str:
         """Issue a request with parameter payload, exponential backoff, and typed failures."""
         if not self._api_key:
-            raise ValueError("Set OPENAI_API_KEY before requesting AI output.")
+            raise ValueError("Set OPENAI_API_KEY or AI_API_KEY before requesting AI output.")
         payload = {
             "model": self._model,
             "temperature": self._temperature,
@@ -178,7 +199,7 @@ class AIClient:
             ],
         }
         request = urllib.request.Request(
-            API_URL, data=json.dumps(payload).encode("utf-8"),
+            self._api_url, data=json.dumps(payload).encode("utf-8"),
             headers={"Authorization": f"Bearer {self._api_key}",
                      "Content-Type": "application/json"}, method="POST",
         )

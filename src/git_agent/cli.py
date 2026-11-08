@@ -1,6 +1,7 @@
 """CLI implementation for git_agent package: supports commit and pr subcommands."""
 
 import argparse
+import os
 import sys
 from typing import Final
 
@@ -16,8 +17,28 @@ DEFAULT_MAX_TOKENS: Final = 1000
 COMMANDS: Final = ("commit", "pr")
 
 
+def load_dotenv(dotenv_path: str = ".env") -> None:
+    """Read a local .env file and populate os.environ without third-party dependencies."""
+    if not os.path.exists(dotenv_path):
+        return
+    try:
+        with open(dotenv_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("\"'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except OSError:
+        pass
+
+
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     """Parse the optional subcommand, safe-mode switch, and parameter controls."""
+    load_dotenv()
     parser = argparse.ArgumentParser(
         prog="git-agent",
         description="Generate a commit message or PR description.",
@@ -39,7 +60,11 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "--pr", action="store_true", help="Generate Why/What/How to Test PR text (same as the 'pr' subcommand)."
     )
     parser.add_argument("--dry-run", action="store_true", help="Preview safe input without an API call.")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model name.")
+    parser.add_argument(
+        "--api-base", default=os.getenv("OPENAI_BASE_URL") or os.getenv("AI_API_BASE_URL"),
+        help="Custom API base URL (e.g. https://copa.codyssey.kr/v1).",
+    )
+    parser.add_argument("--model", default=os.getenv("AI_MODEL", DEFAULT_MODEL), help="AI model name.")
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE, help="Sampling temperature (0.0 to 2.0).")
     parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Maximum completion tokens.")
     safety = parser.add_mutually_exclusive_group()
@@ -59,6 +84,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 def _generate(args: argparse.Namespace, diff: str, status: str) -> str:
     """Preview protected inputs or generate and format the requested output with section delimiters."""
     client = AIClient(
+        base_url=getattr(args, "api_base", None),
         model=args.model,
         temperature=args.temperature,
         max_tokens=args.max_tokens,
