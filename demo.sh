@@ -25,7 +25,8 @@ def multiply(a: int, b: int) -> int:
     """두 정수의 곱을 계산합니다."""
     return a * b
 EOF
-echo "✔ 시연용 코드 파일 생성 완료: demo_calculator.py"
+git add demo_calculator.py
+echo "✔ 시연용 코드 파일 생성 및 초기 스테이징 완료: demo_calculator.py"
 
 echo ""
 echo "======================================================================"
@@ -38,6 +39,7 @@ AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
 GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
 EOF
 
+echo "--- Unstaged 변경사항에 대한 Safe-Mode 마스킹 Dry-Run 프리뷰 ---"
 python3 main.py commit --dry-run
 echo "✔ [MASKED] 치환 및 500라인 상한 절단 방어 확인 완료"
 
