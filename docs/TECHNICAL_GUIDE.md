@@ -117,8 +117,8 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 
 ## 4장. LLM 통신 및 하이퍼파라미터 제어
 
-### 4.1 OpenAI REST API 및 Chat Completion JSON 규격
-`src/ai_client.py`는 `https://api.openai.com/v1/chat/completions` 엔드포인트에 `POST` 요청을 전송합니다. 외부 의존성(requests 등) 없이 순수 `urllib.request`로 JSON 페이로드를 직렬화하여 전송합니다.
+### 4.1 OpenAI REST API 및 Chat Completion JSON 규격 (동적 Base URL & .env 지원)
+`src/ai_client.py`는 기본 `https://api.openai.com/v1/chat/completions` 엔드포인트뿐만 아니라, `OPENAI_BASE_URL` 환경변수 또는 `--api-base` CLI 플래그를 통해 코디세이 Public API(`https://copa.codyssey.kr/v1`) 등 임의의 OpenAI 호환 API 게이트웨이에 유연하게 `POST` 요청을 전송합니다. 순수 파이썬 내장 `.env` 로더를 통해 프로젝트 루트의 `.env` 파일을 자동으로 감지하며, 외부 의존성(requests 등) 없이 순수 `urllib.request`로 JSON 페이로드를 직렬화하여 전송합니다.
 
 <img src="./B2 HTTP와 REST API 인포그래픽.png" width="100%" alt="B2. HTTP와 REST API 인포그래픽" />
 

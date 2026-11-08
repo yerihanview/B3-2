@@ -28,8 +28,8 @@ Git 변경사항(`git status`, `git diff`)을 수집하여 OpenAI API를 통해 
 - [x] **[RTM #08] Safe-Mode Dry-Run 프리뷰**: `--dry-run` 플래그로 API 호출 0건, 마스킹/절단 파라미터 사전 검증.
 
 ### [DoD-3] AI 통신, 복원력(Resilience) 및 파라미터 제어 (`src/ai_client.py`)
-- [x] **[RTM #07] 하이퍼파라미터 바인딩**: CLI `--temperature`, `--max-tokens`, `--model` 파싱 및 AIClient 적용.
-- [x] **[RTM #10] HTTP 페이로드 무결성**: OpenAI API 요청 JSON에 모델명, temperature, max_tokens 정확한 반영.
+- [x] **[RTM #07] 하이퍼파라미터 바인딩**: CLI `--temperature`, `--max-tokens`, `--model`, `--api-base` 파싱 및 AIClient 적용.
+- [x] **[RTM #10] HTTP 페이로드 및 Base URL 무결성**: OpenAI API 및 코디세이 등 커스텀 Base URL 요청 JSON에 모델명, temperature, max_tokens 정확한 반영 및 `.env` 자동 감지.
 - [x] **[RTM #14] HTTP 401 즉시 종료(Fail-Fast)**: 인증 실패 시 재시도 없이 `AuthenticationError` 발생 및 Exit Code 1 종료.
 - [x] **[RTM #15] HTTP 429 지수 백오프**: RateLimit 발생 시 1초→2초 지수 백오프 3회 재시도 및 할당량(Quota) 초과 원인 안내.
 - [x] **[RTM #16] HTTP 5xx 서버 에러 백오프 & 복구**: 502/503 에러 지수 백오프 재시도 및 성공 시 정상 복구.

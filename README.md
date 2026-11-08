@@ -96,15 +96,33 @@ B3-2/
 
 ## 5. 환경 설정 및 API 키 보안
 
-보안 표준에 따라 실제 API Key는 리포지토리에 절대 포함되지 않습니다.
+보안 표준에 따라 실제 API Key는 리포지토리에 절대 포함되지 않으며, `.gitignore`에 등록되어 커밋이 원천 차단됩니다.  
+B3-2는 **의존성 0개의 순수 파이썬 내장 `.env` 파일 로더**를 탑재하여, 프로젝트 루트의 `.env` 파일에 기록된 키와 Base URL을 자동으로 감지합니다. 터미널마다 일일이 `export` 명령어를 입력할 필요가 없습니다.
 
+### 5-1. 방법 1: 코디세이 Public API 연동 (추천: 무료 토큰 제공)
+코디세이 올인원 수강생에게 제공되는 무료 Public API 키를 사용하면 개인 사비 지출 없이 즉시 실측 테스트가 가능합니다:
 ```bash
-# 1. 예시 설정 파일 확인
-cat .env.example
+# 1. 설정 템플릿 복사
+cp .env.example .env
 
-# 2. 로컬 환경변수 등록 (선택사항, --dry-run 구동 시에는 불필요)
-export OPENAI_API_KEY="your-api-key-here"
+# 2. .env 파일에 코디세이 키 및 엔드포인트 설정
+OPENAI_API_KEY=sk-cody-live-your-key-here
+OPENAI_BASE_URL=https://copa.codyssey.kr/v1
 ```
+
+### 5-2. 방법 2: OpenAI 공식 API 연동
+```bash
+cp .env.example .env
+OPENAI_API_KEY=sk-your-openai-api-key-here
+```
+
+### 5-3. 방법 3: 터미널 환경변수 직접 주입 (선택사항)
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+export OPENAI_BASE_URL="https://copa.codyssey.kr/v1"  # 코디세이 API 사용 시
+```
+
+> 💡 **참고**: API 키가 없어도 `--dry-run` 플래그를 사용하면 외부 통신 및 과금 0건으로 전체 마스킹·절단·파라미터 파이프라인을 100% 검증할 수 있습니다.
 
 ---
 
@@ -158,7 +176,8 @@ python main.py commit --no-safe-mode      # 신뢰된 입력에서만 사용
 | `--no-safe-mode` | boolean 플래그 | `False` | Safe-Mode를 끕니다. `--safe-mode`와 동시 사용 불가(상호 배타). |
 | `--staged` | boolean 플래그 | `False` | `git add`된 스테이징 영역의 변경사항을 대상으로 분석합니다 (기본: Unstaged 변경사항). |
 | `--dry-run` | boolean 플래그 | `False` | **실제 API를 호출하지 않고**, 마스킹·절단이 끝난 입력과 파라미터를 미리보기로 출력합니다. |
-| `--model MODEL` | 문자열 | `gpt-4o-mini` | 사용할 OpenAI 모델명을 지정합니다 (예: `gpt-4o`, `gpt-4o-mini`). |
+| `--api-base URL` | 문자열 | `OPENAI_BASE_URL` 환경변수 또는 `https://api.openai.com/v1` | 커스텀 API Base URL을 지정합니다 (예: `https://copa.codyssey.kr/v1`). |
+| `--model MODEL` | 문자열 | `gpt-4o-mini` | 사용할 AI 모델명을 지정합니다 (OpenAI: `gpt-4o-mini`, `gpt-4o` / 코디세이: `gemini-3-flash`, `gpt-5.4-mini` 등). |
 | `--temperature N` | 부동소수점 | `0.2` | AI 생성 창의성 조절 (0.0 ~ 2.0). |
 | `--max-tokens N` | 정수 | `1000` | 생성될 최대 토큰 수 제한(프롬프트 길이는 줄이지 않음). |
 
@@ -281,28 +300,105 @@ python tests/verify_code.py
 
 ## 🚀 9. 동료평가자용 3분 퀵스타트 시연 시나리오
 
-동료평가자께서는 아래 명령어를 터미널에 그대로 복사·붙여넣기하여 프로젝트의 모든 기능을 3분 이내에 검증하실 수 있습니다. (클론 직후에는 변경사항이 없으므로, 시연용 변경을 하나 만들어 둡니다.)
+동료평가자께서는 터미널에서 아래 4단계 명령어를 복사·붙여넣기하여 프로젝트의 모든 핵심 기능(25대 테스트, 임의 코드 변경 커밋 생성, PR 생성, Safe-Mode 마스킹, 미추적 파일 감지)을 3분 이내에 완벽히 검증하실 수 있습니다.  
+(원클릭 자동 실행을 원하실 경우 루트의 `bash demo.sh` 스크립트를 실행하셔도 동일한 전체 시연이 자동으로 수행됩니다.)
 
+### [Step 0] 제반 환경 준비 (API 키 설정 또는 무과금 Dry-Run 준비)
+코디세이 무료 Public API 키 또는 OpenAI 키를 `.env` 파일에 설정합니다. (키가 없어도 `--dry-run`으로 모든 기능 검증 가능)
 ```bash
-# [Step 1] 독립 기계 채점기 1초 검증 (25대 항목 전수 All Pass, 100점)
+# .env 파일 생성 (.gitignore에 의해 커밋되지 않음)
+cat << 'EOF' > .env
+OPENAI_API_KEY=sk-cody-live-your-key-here
+OPENAI_BASE_URL=https://copa.codyssey.kr/v1
+EOF
+```
+
+### [Step 1] 독립 기계 채점기 1초 검증 (25대 항목 전수 All Pass, 100점)
+```bash
 python tests/verify_code.py
+# 기대 결과: 25개 테스트 100점 All Pass (0.1초 소요)
+```
 
-# [Step 2] 시연용 변경 만들기
-printf 'demo\n' >> DEMO.md
-git add DEMO.md
+### [Step 2] 시연에 사용될 임의의 파일 변경 제반 환경 준비 (현실적 Python 유틸리티 코드)
+AI가 실제 동작 맥락을 파악하고 시맨틱 커밋 메시지와 PR을 작성할 수 있도록 의미 있는 함수 2개를 포함한 임의의 코드 파일을 생성합니다:
+```bash
+cat << 'EOF' > demo_calculator.py
+"""시연용 수학 유틸리티 모듈"""
 
-# [Step 3] 서브커맨드 + Safe-Mode + 파라미터 프리뷰 (API 과금 0원)
-python main.py pr --dry-run --staged --temperature 0.7 --max-tokens 1500
-python main.py commit --dry-run --staged
+def add(a: int, b: int) -> int:
+    """두 정수의 합을 계산합니다."""
+    return a + b
 
-# [Step 4] 실제 생성 (OPENAI_API_KEY 설정 시)
-export OPENAI_API_KEY="sk-..."
-python main.py pr --staged --temperature 0.2 --max-tokens 1500
-python main.py commit --staged          # 또는 python src/main.py commit --staged
+def multiply(a: int, b: int) -> int:
+    """두 정수의 곱을 계산합니다."""
+    return a * b
+EOF
+```
 
-# [Step 5] 결과물 및 로그 확인 후 정리
-cat tests/test_result.txt
-git reset && rm DEMO.md
+### [Step 3] 4대 핵심 기능 실전 시연
+
+#### 3-1. 미스테이징(Unstaged) 커밋 메시지 자동 생성 (기본 모드)
+`git add`를 하지 않은 작업 트리 변경사항을 자동으로 감지하여 Conventional Commits 메시지를 생성합니다:
+```bash
+# 코디세이 API 사용 시 (최소 토큰 gemini-3-flash 권장)
+python main.py commit --model gemini-3-flash
+
+# OpenAI 공식 API 사용 시
+python main.py commit
+```
+> **기대 결과**: `--- Commit Message ---` 구획선 안에 `feat: add math utility functions for addition and multiplication`과 같은 시맨틱 헤더와 본문이 명확히 출력됩니다.
+
+#### 3-2. 스테이징(Staged) 기반 구조화 PR 설명 자동 생성 (`--staged`, `--pr`)
+변경 파일을 스테이징 영역에 추가하고 상세 PR 문서를 생성합니다:
+```bash
+git add demo_calculator.py
+
+# PR 초안 생성 (Why / What / How to Test 3대 섹션 및 불릿 구조)
+python main.py pr --staged --temperature 0.2 --max-tokens 1500 --model gemini-3-flash
+```
+> **기대 결과**: `--- PR Title ---` 및 `--- PR Body ---` 구획선과 함께 `### Why`, `### What`, `### How to Test` 각 섹션별 최소 1개 이상의 불릿(`- `)이 엄격하게 지켜진 완벽한 PR 템플릿이 출력됩니다.
+
+#### 3-3. Safe-Mode 민감정보 자동 마스킹 실측 (보안 검증 / 과금 0원 Dry-Run)
+코드에 실수로 하드코딩될 수 있는 API Key와 토큰을 추가한 뒤, 외부 AI 프롬프트 전송 전 완벽히 마스킹되는지 검증합니다:
+```bash
+# 가짜 민감정보 삽입
+cat << 'EOF' >> demo_calculator.py
+
+# 민감정보 테스트 (Safe-Mode 검증용)
+AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
+GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
+EOF
+
+# Dry-Run 프리뷰로 마스킹 실측 (API 호출 및 과금 0원)
+python main.py commit --dry-run
+```
+> **기대 결과**: Diff 미리보기에서 API Key와 토큰이 `[MASKED]`로 안전하게 치환되어 원천적으로 유출이 차단됨을 육안으로 확인하실 수 있습니다.
+
+#### 3-4. 미추적 파일(Untracked File) 지능형 감지 안내
+신규 파일이 스테이징되지 않았을 때의 친절한 에러 핸들링을 확인합니다:
+```bash
+git reset HEAD demo_calculator.py >/dev/null 2>&1
+git checkout -- demo_calculator.py
+touch demo_untracked_test.py
+
+python main.py commit
+```
+> **기대 결과**: "No changes in the selected diff, but untracked files were detected: ? demo_untracked_test.py. Please stage new files with 'git add <file>' first." 친절한 안내가 출력됩니다.
+
+### [Step 4] 시연 종료 후 1초 원상복구 (Zero-Artifact Clean-up)
+시연에 사용된 임의 파일과 임시 설정 파일을 깔끔하게 정리하여 저장소를 클론 직후의 100% 무결점 상태로 즉시 복원합니다:
+```bash
+rm -f demo_calculator.py demo_untracked_test.py .env
+git checkout -- .
+git status  # "working tree clean" 확인
+```
+
+---
+
+### 💡 팁: 원클릭 자동 시연 스크립트 (`demo.sh`)
+위의 Step 1부터 Step 4까지의 전 과정을 터미널에 일일이 입력하지 않고 한 번에 실행하고 뒷정리까지 마치려면 아래 명령어를 실행하세요:
+```bash
+bash demo.sh
 ```
 
 > **기대 결과**: 25개 테스트 전수 통과(`100/100`), Dry-Run은 마스킹·절단된 입력과 파라미터만 출력(실제 PR 초안 미생성), 실제 생성은 `--- Commit Message ---` 또는 `--- PR Title ---` / `--- PR Body ---` 구획선과 `### Why` / `### What` / `### How to Test` 불릿 구조를 완벽하게 만족합니다.
