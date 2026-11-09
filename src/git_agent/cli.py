@@ -64,7 +64,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "--api-base", default=os.getenv("OPENAI_BASE_URL") or os.getenv("AI_API_BASE_URL"),
         help="Custom API base URL (e.g. https://copa.codyssey.kr/v1).",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="AI model name.")
+    parser.add_argument("--model", default=os.getenv("AI_MODEL", DEFAULT_MODEL), help="AI model name.")
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE, help="Sampling temperature (0.0 to 2.0).")
     parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Maximum completion tokens.")
     safety = parser.add_mutually_exclusive_group()

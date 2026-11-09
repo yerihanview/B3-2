@@ -335,8 +335,9 @@ pip install -e . --break-system-packages
 
 # 2. 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
 cat << 'EOF' > .env
-OPENAI_API_KEY=sk-cody-live-your-key-here
+OPENAI_API_KEY=sk-cody-live-7ZvLXHk3Qs86Perkk_LhE6v-kzIubkbmLYu1Dyr4EE8
 OPENAI_BASE_URL=https://copa.codyssey.kr/v1
+AI_MODEL=gemini-3-flash
 EOF
 ```
 
@@ -448,16 +449,18 @@ python -m git_agent commit --staged --dry-run | grep -E "(\+def|A  demo)"
 ---
 
 ### [Step 6] 하이퍼파라미터 제어 실증 (--temperature, --max-tokens)
-- 📌 **발표 설명 멘트**: "모델의 결정론성을 조절하는 temperature와 비용 상한인 max-tokens 파라미터가 CLI 옵션을 통해 실제 API 호출 페이로드로 완벽하게 주입됨을 검증합니다."
+- 📌 **발표 설명 멘트**: "모델의 결정론성을 조절하는 temperature와 비용 상한인 max-tokens 파라미터가 CLI 옵션을 통해 실제 API 호출 및 출력 제어로 완벽하게 반영됨을 실증합니다."
 - 💻 **실행 명령어**:
 ```bash
-# 결정론적 커밋 설정 (temp=0.0 / max_tokens=300)
-python -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300 | head -n 4
+# 6-1. 결정론적 커밋 생성 (temp=0.0 / max_tokens=300)
+python -m git_agent commit --staged --temperature 0.0 --max-tokens 300
 
-# 창의적/대용량 PR 설정 (temp=0.8 / max_tokens=1500)
-python -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500 | head -n 4
+# 6-2. 창의적/대용량 PR 본문 생성 (temp=0.8 / max_tokens=1500)
+python -m git_agent pr --staged --temperature 0.8 --max-tokens 1500
 ```
-- 🔍 **확인 포인트**: `Parameters: model=gpt-4o-mini, temp=0.0, max_tokens=300` 및 `temp=0.8, max_tokens=1500`으로 파라미터가 정확히 바인딩됨을 확인합니다.
+- 🔍 **확인 포인트**: 
+  - `temp=0.0`에서는 군더더기 없는 엄격한 커밋 메시지가 생성되고, `temp=0.8`에서는 구조화된 Why/What/How to Test PR 본문이 실시간 생성됨을 확인합니다.
+  - (키가 없는 오프라인 환경인 경우 `--dry-run` 플래그로 파라미터 페이로드 주입을 0원에 검증할 수 있습니다.)
 
 ---
 

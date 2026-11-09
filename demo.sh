@@ -195,13 +195,23 @@ echo -e "${BOLD}${GREEN}[Step 6/8] 하이퍼파라미터 제어 실증 (--temper
 echo -e "${BOLD}${GREEN}----------------------------------------------------------------------${NC}"
 echo -e "📌 ${BOLD}설명${NC}: 모델의 다양성을 제어하는 temperature와 비용 상한인 max-tokens 파라미터가"
 echo -e "         CLI 옵션을 통해 API 호출 페이로드로 완벽하게 주입됨을 검증합니다."
-echo -e "💻 ${BOLD}실행 명령어 (결정론적 설정)${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300${NC}"
-pause_step
-${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300 | head -n 4
+if [ "$(has_valid_api_key)" = "1" ]; then
+    echo -e "💻 ${BOLD}실행 명령어 (결정론적 설정 - 라이브 AI 호출)${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --temperature 0.0 --max-tokens 300${NC}"
+    pause_step
+    ${PYTHON} -m git_agent commit --staged --temperature 0.0 --max-tokens 300
 
-echo -e "\n💻 ${BOLD}실행 명령어 (창의적/대용량 설정)${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500${NC}"
-pause_step
-${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500 | head -n 4
+    echo -e "\n💻 ${BOLD}실행 명령어 (창의적/대용량 설정 - 라이브 AI PR 호출)${NC}: ${CYAN}${PYTHON} -m git_agent pr --staged --temperature 0.8 --max-tokens 1500${NC}"
+    pause_step
+    ${PYTHON} -m git_agent pr --staged --temperature 0.8 --max-tokens 1500
+else
+    echo -e "💻 ${BOLD}실행 명령어 (결정론적 설정 - Dry-Run)${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300${NC}"
+    pause_step
+    ${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300
+
+    echo -e "\n💻 ${BOLD}실행 명령어 (창의적/대용량 설정 - Dry-Run)${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500${NC}"
+    pause_step
+    ${PYTHON} -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500
+fi
 
 echo -e "\n✔ [Step 6 완료] temp=0.0/300 및 temp=0.8/1500 파라미터 정상 주입 확인."
 
