@@ -53,7 +53,7 @@ B3-2 프로젝트는 외부 서드파티 패키지 의존성 없이 **Python 3.1
 - `src/git_agent/ai_client.py`: AI API 통신. 시스템/유저 프롬프트 조립, REST 호출, 지수 백오프 및 오류 핸들링.
 - `src/git_agent/formatter.py`: 출력 포맷팅 및 엄격한 유효성 검증. Conventional Commits 72자, PR 80자 단어 경계 절단, 불릿 강제.
 
-<img src="./모듈 분리와 데이터 흐름 구조.png" width="100%" alt="Part A. 모듈 분리와 데이터 흐름 구조" />
+<img src="./모듈 분리와 데이터 흐름 구조.png" width="100%" alt="Part A. 모듈 분리와 데이터 흐름 구조" />
 
 ### 1.2 전체 런타임 통신 흐름
 사용자가 터미널에서 `$ python main.py commit` 또는 `pr`을 실행하면, 로컬 시스템의 Git 저장소로부터 diff가 추출되고, Safe-Mode 정제를 거쳐 OpenAI API 서버로 안전하게 전달된 뒤 포맷터를 통해 터미널로 출력됩니다.
@@ -73,17 +73,17 @@ AI 모델은 확률적 텍스트 생성기입니다. 시스템은 정형화된 �
 Git은 작업 디렉토리(Working Directory), 스테이징 영역(Staging Area / Index), 로컬 저장소(Local Repository)의 3단계로 파일 상태를 관리합니다.
 B3-2는 기본 실행 시 Working Directory의 미스테이징 변경사항(`git diff`)을 수집하고, `--staged` 옵션이 주어지면 다음 커밋 대상인 Staging Area(`git diff --cached`)를 정밀하게 타겟팅합니다.
 
-<img src="./git의_세_영역과_staging_area_흐름.png" width="100%" alt="Git 3대 영역과 Staging Area 흐름" />
+<img src="./git의_세_영역과_staging_area_흐름.png" width="100%" alt="Git 3대 영역과 Staging Area 흐름" />
 
 ### 2.2 Unified Diff 포맷 구조 및 라인 파싱
 Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`, `+++ b/`), 변경 라인 범위를 나타내는 Hunk 헤더(`@@ -1,4 +1,7 @@`), 그리고 라인별 추가(`+`) 및 삭제(`-`) 데이터로 이루어져 있습니다. 이 diff 텍스트 자체가 AI가 분석해야 할 핵심 컨텍스트(Context)입니다.
 
-<img src="./Git diff 비교 인포그래픽.png" width="100%" alt="Git Diff 비교 인포그래픽" />
+<img src="./Git diff 비교 인포그래픽.png" width="100%" alt="Git Diff 비교 인포그래픽" />
 
 ### 2.3 Subprocess 안전 실행 및 Empty Diff 방어
 `src/git_agent/git_manager.py`는 `subprocess.run` 호출 시 `text=True, encoding='utf-8', errors='replace'`를 적용하여 다국어 및 한글 소스코드의 인코딩 깨짐을 원천 차단합니다. 또한 변경사항이 전혀 없는 경우(`raw_diff == ""`) 불필요한 OpenAI API 호출 비용이 발생하는 것을 막기 위해 조기 예외(Early Exit)를 발생시키고 미추적 파일 유무를 감지하여 사용자에게 안내합니다.
 
-<img src="./Python과 Git의 subprocess 실행 흐름.png" width="100%" alt="Python과 Git의 Subprocess 실행 흐름" />
+<img src="./Python과 Git의 subprocess 실행 흐름.png" width="100%" alt="Python과 Git의 Subprocess 실행 흐름" />
 
 #### [시스템 실측 아키텍처 도식: Git Diff 파이프라인 & Hunk 해부]
 <img src="./4_Git_Diff_수집과_Subprocess_파이프라인_도식.png" width="100%" alt="Git Diff 수집 및 Subprocess 파이프라인 도식" />
@@ -115,7 +115,7 @@ Git이 출력하는 Unified Diff는 파일 경로 헤더(`diff --git`, `--- a/`,
 ### 4.1 OpenAI REST API 및 Chat Completion JSON 규격 (동적 Base URL & .env 지원)
 `src/git_agent/ai_client.py`는 기본 `https://api.openai.com/v1/chat/completions` 엔드포인트뿐만 아니라, `OPENAI_BASE_URL` 환경변수 또는 `--api-base` CLI 플래그를 통해 코디세이 Public API(`https://copa.codyssey.kr/v1`) 등 임의의 OpenAI 호환 API 게이트웨이에 유연하게 `POST` 요청을 전송합니다. 순수 파이썬 내장 `.env` 로더를 통해 프로젝트 루트의 `.env` 파일을 자동으로 감지하며, 외부 의존성(requests 등) 없이 순수 `urllib.request`로 JSON 페이로드를 직렬화하여 전송합니다.
 
-<img src="./B2 HTTP와 REST API 인포그래픽.png" width="100%" alt="B2. HTTP와 REST API 인포그래픽" />
+<img src="./B2 HTTP와 REST API 인포그래픽.png" width="100%" alt="B2. HTTP와 REST API 인포그래픽" />
 
 ### 4.2 Temperature(결정론성)와 max_tokens(비용/길이) 제어 전략
 - **temperature**: 모델 출력의 무작위성(다양성)을 조절합니다. 0.0에 가까울수록 결정론적이고 안정적인 커밋 요약이 나오고, 0.7 이상일수록 표현이 풍부해지지만 실행할 때마다 결과가 달라집니다. 프로덕션 기본값은 `0.2`로 고정했습니다.
