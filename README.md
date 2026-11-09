@@ -413,7 +413,9 @@ python -m git_agent commit --staged --dry-run | tail -n 8
 git reset HEAD demo/token_overflow.txt >/dev/null 2>&1
 rm -f demo/token_overflow.txt
 ```
-- 🔍 **확인 포인트**: 출력 끝부분에 `[truncated: ... lines omitted]` 안내가 출력되며 500줄에서 정확히 절삭되어 API 토큰/비용 폭증이 차단됨을 확인합니다.
+- 🔍 **확인 포인트**: 
+  - 출력 끝부분에 `[truncated: ... lines omitted]` 안내가 출력되며 전체 diff가 정확히 500줄에서 절삭되어 API 토큰/비용 폭증이 차단됨을 확인합니다.
+  - 💡 **줄 번호가 line_479 내외인 이유**: 절삭 기준(500줄)은 단일 파일의 행 번호가 아니라 **`git diff` 전체 텍스트 라인 수**입니다. Step 3의 `calculator.py` diff(약 15줄)와 `token_overflow.txt`의 Git 메타데이터 헤더(약 6줄) 등 선행 21줄이 합산되어, 본문 `line_479`에서 정확히 전체 500번째 줄에 도달하여 절단됩니다.
 
 ---
 
