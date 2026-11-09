@@ -62,7 +62,7 @@ test_25_package_execution_and_pyproject (__main__.TestB32MissionRequirements.tes
 Architecture: standard package layout (src/git_agent) and pyproject.toml scripts. ... ok
 
 ----------------------------------------------------------------------
-Ran 25 tests in 0.096s
+Ran 25 tests in 0.145s
 
 OK
 

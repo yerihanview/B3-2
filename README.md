@@ -133,11 +133,12 @@ export OPENAI_BASE_URL="https://copa.codyssey.kr/v1"  # 코디세이 API 사용 
 표준 패키지 모듈 실행(`python -m git_agent`), 설치형 전역 CLI(`git-agent`), 그리고 공식 미션지 호환용 루트 `main.py` 어디서든 동일하게 실행 가능합니다:
 
 ```bash
-# 1. 패키지 모듈 실행 (Python 표준 CLI)
+# 1. 패키지 모듈 실행 (Python 표준 CLI - 설치 불필요, 가장 권장)
+export PYTHONPATH="src"   # (bash demo.sh 실행 시 이미 자동 내장)
 python -m git_agent commit [OPTIONS]
 python -m git_agent pr     [OPTIONS]
 
-# 2. 설치형 전역 CLI (pip install -e . 실행 후)
+# 2. 설치형 전역 CLI (pip install -e . 실행 후 - PEP 668 환경은 --break-system-packages 플래그 사용)
 git-agent commit [OPTIONS]
 git-agent pr     [OPTIONS]
 cg commit        [OPTIONS]    # 단축 명령어
@@ -317,11 +318,20 @@ python tests/verify_code.py
 
 ---
 
-### [Step 0] 사전 환경 확인 및 패키지 설정 (선택 사항)
-코디세이 무료 Public API 키 또는 OpenAI 키가 `.env` 파일에 설정되어 있으면 실제 AI 커밋/PR 생성이 호출되며, 키가 없는 환경이라도 `--dry-run` 플래그를 통해 과금 0원에 모든 보안·포맷 기능을 100% 검증하실 수 있습니다.
+### [Step 0] 사전 환경 확인 및 모듈 설정 (설치 불필요)
+B3-2는 제로 종속성(Zero-Dependency) 표준 라이브러리 아키텍처로 설계되어 **별도의 `pip install` 설치 없이 즉시 실행**하실 수 있습니다. 코디세이 무료 Public API 키 또는 OpenAI 키가 `.env` 파일에 설정되어 있으면 실제 AI 커밋/PR 생성이 호출되며, 키가 없는 환경이라도 `--dry-run` 플래그를 통해 과금 0원에 모든 보안·포맷 기능을 100% 검증하실 수 있습니다.
+
 ```bash
-# 1. 패키지 편집 가능 설치 (어디서나 git-agent 및 python -m git_agent 사용 가능)
-pip install -e .
+# [방법 A - 가장 권장] 무설치 모드 (0초 해결: pip install 불필요!)
+# 파이썬 모듈 검색 경로에 src를 등록하면 패키지 설치 없이 즉시 실행 가능합니다.
+export PYTHONPATH="src"
+
+# [방법 B - 선택] git-agent / cg 전역 CLI 명령어로 등록하고 싶을 때:
+# macOS Homebrew / 최신 리눅스의 PEP 668 외부 관리 환경에서는 아래 플래그를 붙여줍니다.
+pip install -e . --break-system-packages
+
+# [방법 C - 선택] 가상환경(venv) 표준 격리 설치:
+# python3 -m venv .venv && source .venv/bin/activate && pip install -e .
 
 # 2. 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
 cat << 'EOF' > .env
