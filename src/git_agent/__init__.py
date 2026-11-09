@@ -1,4 +1,4 @@
-"""git_agent: Automated Git commit message and PR description generator."""
+"""git_agent: Automated Git commit message and PR description generator."""    
 
 from .ai_client import (
     AIClient,
