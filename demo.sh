@@ -108,10 +108,11 @@ AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
 GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
 EOF
 
-echo -e "💻 ${BOLD}실행 명령어${NC}: ${CYAN}${PYTHON} main.py commit --dry-run${NC}"
+git add demo_calculator.py
+echo -e "💻 ${BOLD}실행 명령어${NC}: ${CYAN}${PYTHON} main.py commit --staged --dry-run${NC}"
 pause_step
 
-${PYTHON} main.py commit --dry-run
+${PYTHON} main.py commit --staged --dry-run
 echo -e "\n✔ [Step 3 완료] Diff 상에서 민감 키가 [MASKED]로 완벽히 치환되어 유출이 차단됨을 확인."
 
 # ------------------------------------------------------------------------------

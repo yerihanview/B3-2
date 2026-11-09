@@ -342,7 +342,7 @@ rm -f demo_untracked_sample.py
 ---
 
 ### [Step 3] 현실적 코드 작성 및 Safe-Mode 민감정보 자동 마스킹 시연 (과금 0원 Dry-Run)
-- 📌 **발표 설명 멘트**: "시연용 수학 유틸리티 모듈(`demo_calculator.py`)을 작성하고 실수로 하드코딩된 API 키를 포함시킵니다. 외부 AI 프롬프트로 전송되기 전 Safe-Mode에 의해 `[MASKED]`로 자동 치환되는 보안 안전성을 검증합니다."
+- 📌 **발표 설명 멘트**: "시연용 수학 유틸리티 모듈(`demo_calculator.py`)을 작성하고 실수로 하드코딩된 API 키를 포함시킵니다. 신규 파일이므로 `git add`로 스테이징한 뒤, 외부 AI 프롬프트로 전송되기 전 Safe-Mode에 의해 `[MASKED]`로 자동 치환되는 보안 안전성을 검증합니다."
 - 💻 **실행 명령어**:
 ```bash
 cat << 'EOF' > demo_calculator.py
@@ -361,7 +361,9 @@ AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
 GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
 EOF
 
-python main.py commit --dry-run
+# 신규 파일 스테이징 후 Safe-Mode 마스킹 검증
+git add demo_calculator.py
+python main.py commit --staged --dry-run
 ```
 - 🔍 **확인 포인트**: Diff 미리보기에서 `AWS_SECRET_KEY`와 `GITHUB_TOKEN` 문자열이 `[MASKED]`로 안전하게 치환되어 원천적으로 정보 유출이 차단됨을 육안으로 확인합니다.
 
