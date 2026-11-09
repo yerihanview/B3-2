@@ -1,9 +1,11 @@
 """CLI implementation for git_agent package: supports commit and pr subcommands."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
-from typing import Final
+from typing import Final, Optional
 
 from .ai_client import AIClient
 from .formatter import OutputFormatter
@@ -36,7 +38,7 @@ def load_dotenv(dotenv_path: str = ".env") -> None:
         pass
 
 
-def parse_args(args: list[str] | None = None) -> argparse.Namespace:
+def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     """Parse the optional subcommand, safe-mode switch, and parameter controls."""
     load_dotenv()
     parser = argparse.ArgumentParser(

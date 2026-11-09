@@ -1,12 +1,14 @@
 """Prepare safe prompts and request descriptions using the OpenAI HTTP API with full parameter control."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
 import time
 import urllib.error
 import urllib.request
-from typing import Final
+from typing import Final, Optional
 
 MAX_DIFF_LINES: Final = 500
 API_TIMEOUT: Final = 30
@@ -42,9 +44,9 @@ class AIClient:
 
     def __init__(
         self,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        model: str | None = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None,
         temperature: float = 0.2,
         max_tokens: int = 1000,
         safe_mode: bool = True,

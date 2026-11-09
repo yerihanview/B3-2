@@ -1,5 +1,7 @@
 """Normalize generated text into commit and pull request formats with strict length and section validation."""
 
+from __future__ import annotations
+
 import re
 from typing import Final
 

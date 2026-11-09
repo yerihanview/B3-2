@@ -1,5 +1,7 @@
 """Read Git state without invoking a shell or modifying the repository."""
 
+from __future__ import annotations
+
 import subprocess
 from typing import Final
 

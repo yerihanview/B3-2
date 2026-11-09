@@ -14,8 +14,12 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# 파이썬 실행 바이너리 및 모듈 경로 설정
-if command -v python3 >/dev/null 2>&1; then
+# 파이썬 실행 바이너리 및 모듈 경로 설정 (Python 3.10+ 우선 감지, fallback: python3 / python)
+if command -v python >/dev/null 2>&1 && python -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+    PYTHON="python"
+elif command -v python3 >/dev/null 2>&1 && python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+    PYTHON="python3"
+elif command -v python3 >/dev/null 2>&1; then
     PYTHON="python3"
 else
     PYTHON="python"
