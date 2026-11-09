@@ -158,12 +158,12 @@ python main.py        [OPTIONS]   # 기본값: commit
 `git diff`에 잡히지 않는 새로 생성된 파일(`??`)이 있을 경우, "변경 사항이 없다"고 끝내지 않고 미추적 파일 목록을 출력하며 `git add <file>`을 실행하도록 친절히 안내합니다.
 
 ```bash
-# 실전 예시
-python main.py commit --staged
-python main.py pr --staged --temperature 0.7 --max-tokens 1500
-python main.py pr --dry-run               # 마스킹된 입력 미리보기 (API 호출 없음)
-python main.py --pr --dry-run             # 위와 동일
-python main.py commit --no-safe-mode      # 신뢰된 입력에서만 사용
+# 실전 예시 (패키지 모듈 실행 python -m git_agent 또는 git-agent 콘솔 명령)
+python -m git_agent commit --staged
+python -m git_agent pr --staged --temperature 0.7 --max-tokens 1500
+python -m git_agent pr --dry-run               # 마스킹된 입력 미리보기 (API 호출 없음)
+python -m git_agent commit --no-safe-mode      # 신뢰된 입력에서만 사용
+# (하위 호환 지원: python main.py commit 실행도 100% 동일하게 동작)
 ```
 
 ### 6-2. 지원 옵션
@@ -307,10 +307,23 @@ python tests/verify_code.py
 
 ---
 
-### [Step 0] 사전 환경 확인 (선택 사항)
+## 🚀 9. 동료평가 시연 시나리오 (8단계 복붙 발표 가이드)
+
+동료평가 발표 시 터미널에서 아래 8단계를 하나씩 복사·붙여넣기하며 B3-2의 전수 핵심 기능이 개발자의 실제 작업 라이프사이클 속에서 자연스럽게 흘러가는 모습을 시연하고 설명하실 수 있습니다.  
+모든 시연 파일은 **`demo/` 디렉토리 내부에서만 격리 생성 및 삭제**되므로 루트 워킹 트리가 항상 100% 무결점으로 깨끗하게 유지됩니다.  
+(엔터(Enter)를 누를 때마다 단계별 설명과 함께 순차 진행되는 대화형 스크립트를 원하실 경우 루트의 `bash demo.sh`를 실행하시면 동일한 8단계 대화형 시연이 완벽히 지원됩니다.)
+
+> 💡 **참고**: B3-2는 `src/git_agent` 표준 패키지로 설계되어 `python -m git_agent`로 품격 있게 시연합니다. (루트의 `python main.py`도 100% 하위 호환됩니다.)
+
+---
+
+### [Step 0] 사전 환경 확인 및 패키지 설정 (선택 사항)
 코디세이 무료 Public API 키 또는 OpenAI 키가 `.env` 파일에 설정되어 있으면 실제 AI 커밋/PR 생성이 호출되며, 키가 없는 환경이라도 `--dry-run` 플래그를 통해 과금 0원에 모든 보안·포맷 기능을 100% 검증하실 수 있습니다.
 ```bash
-# 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
+# 1. 패키지 편집 가능 설치 (어디서나 git-agent 및 python -m git_agent 사용 가능)
+pip install -e .
+
+# 2. 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
 cat << 'EOF' > .env
 OPENAI_API_KEY=sk-cody-live-your-key-here
 OPENAI_BASE_URL=https://copa.codyssey.kr/v1
@@ -320,12 +333,12 @@ EOF
 ---
 
 ### [Step 1] 변경 사항 없음 (Empty Diff) 정상 방어 시연
-- 📌 **발표 설명 멘트**: "작업 트리에 아무런 변경 사항이 없을 때, 예외로 뻗지 않고 친절한 안내를 출력하며 정상 종료(Exit Code 0)합니다."
+- 📌 **발표 설명 멘트**: "작업 트리에 아무런 변경 사항이 없을 때, 예외 에러로 뻗지 않고 친절한 안내를 출력하며 정상 종료(Exit Code 0)합니다."
 - 💻 **실행 명령어**:
 ```bash
-python main.py commit
+python -m git_agent commit
 ```
-- 🔍 **확인 포인트**: `"No changes in the selected diff. Stage new files with git add first."` 안내가 출력되고 에러 없이 종료됨을 확인합니다.
+- 🔍 **확인 포인트**: `"No changes in the selected diff. Stage new files with git add first."` 안내가 출력되고 에러 없이 정상 종료(0)됨을 확인합니다.
 
 ---
 
@@ -333,47 +346,73 @@ python main.py commit
 - 📌 **발표 설명 멘트**: "새 파일을 만들고 `git add`를 깜빡했을 때, `git diff`는 비어있지만 미추적 파일(`??`)을 지능적으로 감지하여 `git add`를 유도합니다."
 - 💻 **실행 명령어**:
 ```bash
-touch demo_untracked_sample.py
-python main.py commit
-rm -f demo_untracked_sample.py
+touch demo/untracked_sample.py
+python -m git_agent commit
+rm -f demo/untracked_sample.py
 ```
-- 🔍 **확인 포인트**: `No changes in the selected diff, but untracked files were detected: ? demo_untracked_sample.py. Please stage new files with 'git add <file>' first.` 안내가 출력됨을 확인합니다.
+- 🔍 **확인 포인트**: `No changes in the selected diff, but untracked files were detected: ? demo/untracked_sample.py. Please stage new files with 'git add <file>' first.` 안내가 출력됨을 확인합니다.
 
 ---
 
-### [Step 3] 현실적 코드 작성 및 Safe-Mode 민감정보 자동 마스킹 시연 (과금 0원 Dry-Run)
-- 📌 **발표 설명 멘트**: "시연용 수학 유틸리티 모듈(`demo_calculator.py`)을 작성하고 실수로 하드코딩된 API 키를 포함시킵니다. 신규 파일이므로 `git add`로 스테이징한 뒤, 외부 AI 프롬프트로 전송되기 전 Safe-Mode에 의해 `[MASKED]`로 자동 치환되는 보안 안전성을 검증합니다."
+### [Step 3] Safe-Mode vs --no-safe-mode 민감정보 마스킹 대조 시연 (과금 0원 Dry-Run)
+- 📌 **발표 설명 멘트**: "시연용 유틸리티 코드(`demo/calculator.py`)에 실수로 하드코딩된 API 키를 포함시킵니다. 기본 Safe-Mode에 의해 `[MASKED]`로 안전 치환되는 모습과, `--no-safe-mode` 적용 시 평문이 노출되는 차이를 대조하여 B3-2의 보안 유효성을 입증합니다."
 - 💻 **실행 명령어**:
 ```bash
-cat << 'EOF' > demo_calculator.py
+cat << 'EOF' > demo/calculator.py
 """시연용 수학 유틸리티 모듈"""
 
 def add(a: int, b: int) -> int:
     """두 정수의 합을 계산합니다."""
     return a + b
-
-def multiply(a: int, b: int) -> int:
-    """두 정수의 곱을 계산합니다."""
-    return a * b
 
 # 실수로 하드코딩된 민감정보 (Safe-Mode 마스킹 시연용)
 AWS_SECRET_KEY = "AKIA1234567890EXAMPLE"
 GITHUB_TOKEN = "ghp_1234567890abcdef1234567890abcdef12"
 EOF
 
-# 신규 파일 스테이징 후 Safe-Mode 마스킹 검증
-git add demo_calculator.py
-python main.py commit --staged --dry-run
+# 신규 파일 스테이징
+git add demo/calculator.py
+
+# 3-1. 기본 Safe-Mode (보안 활성화): [MASKED] 치환 확인
+python -m git_agent commit --staged --dry-run
+
+# 3-2. --no-safe-mode (보안 비활성화 대조): 원본 평문 노출 경고 확인
+python -m git_agent commit --staged --dry-run --no-safe-mode
 ```
-- 🔍 **확인 포인트**: Diff 미리보기에서 `AWS_SECRET_KEY`와 `GITHUB_TOKEN` 문자열이 `[MASKED]`로 안전하게 치환되어 원천적으로 정보 유출이 차단됨을 육안으로 확인합니다.
+- 🔍 **확인 포인트**: 
+  - 기본 모드에서는 `AWS_SECRET_KEY`와 `GITHUB_TOKEN`이 `[MASKED]`로 안전하게 치환되어 원천 차단됩니다.
+  - `--no-safe-mode`에서는 `WARNING: Safe-Mode is off...` 경고와 함께 원본 평문이 노출되어, Safe-Mode의 보안 보호 효과가 육안으로 대조 증명됩니다.
 
 ---
 
-### [Step 4] 작업 중(Unstaged) 커밋 메시지 자동 생성 시연
-- 📌 **발표 설명 멘트**: "민감정보를 제거하고 정상적인 유틸리티 코드로 완성한 뒤, `git add` 없이 작업 중(Unstaged diff) 상태에서 시맨틱 커밋 메시지를 자동 생성합니다."
+### [Step 4] 대용량 Diff 토큰 폭증 및 비용 방어 시연 (500줄 초과 절삭)
+- 📌 **발표 설명 멘트**: "700줄 대용량 파일 생성 시, 프롬프트 토큰 폭증과 무분별한 API 과금을 막기 위해 diff가 500줄 상한에서 자동 절삭(Truncated)됨을 검증합니다."
 - 💻 **실행 명령어**:
 ```bash
-cat << 'EOF' > demo_calculator.py
+python -c "
+with open('demo/token_overflow.txt', 'w', encoding='utf-8') as f:
+    for i in range(1, 701):
+        f.write(f'line_{i}: metric_data_sample_value_for_testing\n')
+"
+git add demo/token_overflow.txt
+
+# 500줄 절단 미리보기 확인
+python -m git_agent commit --staged --dry-run | tail -n 8
+
+# 시연용 대용량 파일 정리
+git reset HEAD demo/token_overflow.txt >/dev/null 2>&1
+rm -f demo/token_overflow.txt
+```
+- 🔍 **확인 포인트**: 출력 끝부분에 `[truncated: ... lines omitted]` 안내가 출력되며 500줄에서 정확히 절삭되어 API 토큰/비용 폭증이 차단됨을 확인합니다.
+
+---
+
+### [Step 5] 미스테이징(Unstaged) vs 스테이징(Staged) 타겟팅 분리 실증
+- 📌 **발표 설명 멘트**: "`demo/calculator.py`를 정상 코드로 정리한 뒤, 작업 트리(Unstaged)의 변경사항과 `git add`된 스테이징 영역(Index)이 `--staged` 옵션에 의해 정확히 분리 타겟팅되는지 확인합니다."
+- 💻 **실행 명령어**:
+```bash
+# 정상 코드로 수정
+cat << 'EOF' > demo/calculator.py
 """시연용 수학 유틸리티 모듈"""
 
 def add(a: int, b: int) -> int:
@@ -385,47 +424,75 @@ def multiply(a: int, b: int) -> int:
     return a * b
 EOF
 
-# 코디세이 무료 API 사용 시 (최소 토큰 gemini-3-flash 권장)
-python main.py commit --model gemini-3-flash
+# 5-1. 작업 트리(Unstaged) 변경사항 타겟팅
+python -m git_agent commit --dry-run | grep -E "(\+def|A  demo)"
 
-# (참고: API 키가 없는 환경일 경우: python main.py commit --dry-run)
+# 5-2. git add 후 스테이징(Staged) 영역 타겟팅
+git add demo/calculator.py
+python -m git_agent commit --staged --dry-run | grep -E "(\+def|A  demo)"
 ```
-- 🔍 **확인 포인트**: `--- Commit Message ---` 구획선 안에 `feat: add math utility functions for addition and multiplication`과 같은 시맨틱 커밋 헤더와 본문이 명확히 출력됨을 확인합니다.
+- 🔍 **확인 포인트**: 기본 실행 시에는 작업 트리의 미스테이징 diff만 읽고, `--staged`를 지정하면 스테이징된 변경사항만을 정확히 타겟팅함을 확인합니다.
 
 ---
 
-### [Step 5] 스테이징(Staged) 및 파라미터 제어 PR 설명서 자동 생성 시연
-- 📌 **발표 설명 멘트**: "`git add demo_calculator.py`로 스테이징 영역에 올린 뒤, 온도(`--temperature`)와 토큰 상한(`--max-tokens`)을 제어하여 Why / What / How to Test 3대 구조화 섹션과 불릿이 완비된 PR 문서를 생성합니다."
+### [Step 6] 하이퍼파라미터 제어 실증 (--temperature, --max-tokens)
+- 📌 **발표 설명 멘트**: "모델의 결정론성을 조절하는 temperature와 비용 상한인 max-tokens 파라미터가 CLI 옵션을 통해 실제 API 호출 페이로드로 완벽하게 주입됨을 검증합니다."
 - 💻 **실행 명령어**:
 ```bash
-git add demo_calculator.py
+# 결정론적 커밋 설정 (temp=0.0 / max_tokens=300)
+python -m git_agent commit --staged --dry-run --temperature 0.0 --max-tokens 300 | head -n 4
 
+# 창의적/대용량 PR 설정 (temp=0.8 / max_tokens=1500)
+python -m git_agent commit --staged --dry-run --temperature 0.8 --max-tokens 1500 | head -n 4
+```
+- 🔍 **확인 포인트**: `Parameters: model=gpt-4o-mini, temp=0.0, max_tokens=300` 및 `temp=0.8, max_tokens=1500`으로 파라미터가 정확히 바인딩됨을 확인합니다.
+
+---
+
+### [Step 7] 공식 루브릭 커밋 메시지 자동 생성 시연 (Conventional Commits 72자)
+- 📌 **발표 설명 멘트**: "공식 루브릭 규격인 Conventional Commits (`<type>(<scope>): <subject>`) 형식 및 헤더 72자 이하 제한을 준수하는 시맨틱 커밋 메시지를 생성합니다."
+- 💻 **실행 명령어**:
+```bash
+# API 키 설정 시 실전 AI 호출 (최소 토큰 gemini-3-flash 권장)
+python -m git_agent commit --staged --temperature 0.2 --model gemini-3-flash
+
+# (참고: API 키 미설정 환경일 경우: python -m git_agent commit --staged --dry-run --temperature 0.2)
+```
+- 🔍 **확인 포인트**: `--- Commit Message ---` 구획선 안에 `feat(demo): add math utility functions for addition and multiplication`과 같은 시맨틱 커밋 헤더와 본문이 명확히 출력됨을 확인합니다.
+
+---
+
+### [Step 8] 공식 루브릭 PR 설명서 자동 생성 시연 (Why / What / How to Test 불릿 완비)
+- 📌 **발표 설명 멘트**: "스테이징된 기능 변경사항에 대해 Why / What / How to Test 3대 필수 섹션과 각 섹션별 필수 불릿('- ')이 완비된 GitHub PR 설명서 초안을 자동 생성합니다."
+- 💻 **실행 명령어**:
+```bash
 # PR 초안 생성 (3대 섹션 및 불릿 강제)
-python main.py pr --staged --temperature 0.2 --max-tokens 1500 --model gemini-3-flash
+python -m git_agent pr --staged --temperature 0.2 --max-tokens 1500 --model gemini-3-flash
 
-# (참고: API 키가 없는 환경일 경우: python main.py pr --staged --dry-run --temperature 0.2 --max-tokens 1500)
+# (참고: API 키 미설정 환경일 경우: python -m git_agent pr --staged --dry-run --temperature 0.2 --max-tokens 1500)
 ```
-- 🔍 **확인 포인트**: `--- PR Title ---` 및 `--- PR Body ---` 구획선과 함께 `### Why`, `### What`, `### How to Test` 각 섹션별 최소 1개 이상의 불릿(`- `)이 완벽하게 지켜진 PR 문서가 출력됨을 확인합니다.
+- 🔍 **확인 포인트**: `--- PR Title ---` (80자 이하) 및 `--- PR Body ---` 구획선과 함께 `### Why`, `### What`, `### How to Test` 각 섹션별 최소 1개 이상의 불릿(`- `)이 완벽하게 지켜진 PR 문서가 출력됨을 확인합니다.
 
 ---
 
-### [Step 6] 시연 종료 및 1초 원상복구 (Zero-Artifact Clean-up)
-- 📌 **발표 설명 멘트**: "시연에 사용된 임의 코드 파일을 삭제하고 저장소를 클론 직후의 100% 무결점 상태로 즉시 복원합니다."
+### [원상복구] 시연 종료 및 1초 클린업 (Clean up)
+- 📌 **발표 설명 멘트**: "`demo/` 디렉토리 내부의 임시 파일을 삭제하고 저장소를 클론 직후의 100% 무결점 상태로 즉시 복원합니다."
 - 💻 **실행 명령어**:
 ```bash
-git reset HEAD demo_calculator.py >/dev/null 2>&1
-rm -f demo_calculator.py
+git reset HEAD demo/ >/dev/null 2>&1
+rm -f demo/calculator.py
 git status
 ```
 - 🔍 **확인 포인트**: `nothing to commit, working tree clean` 상태로 깨끗하게 원상복구됨을 확인합니다.
 
 ---
 
-### 💡 팁: 대화형 엔터 시연 스크립트 (`demo.sh`)
-명령어를 일일이 복사·붙여넣기하지 않고, 화면의 안내와 명령어를 보면서 **[엔터]를 누를 때마다 위 6단계가 하나씩 실행**되는 인터랙티브 시연 스크립트를 제공합니다:
+### 💡 팁: 원클릭 대화형 엔터 시연 러너 (`demo.sh`)
+명령어를 일일이 복사·붙여넣기하지 않고, 화면의 안내와 명령어를 보면서 **[엔터]를 누를 때마다 위 8단계가 하나씩 실행**되는 대화형 스크립트를 제공합니다:
 ```bash
 bash demo.sh
 ```
 - 각 단계별로 실행 명령어와 발표 포인트가 색상 배너로 표시되고, `[엔터]`를 누르면 실제 실행됩니다.
+- 모든 파일이 `demo/` 디렉토리 안에서 격리 처리되며, 시연 도중 `Ctrl+C`로 중단하더라도 트랩 핸들러에 의해 임시 파일이 자동 정리되어 Git 워킹 트리가 항상 깨끗하게 유지됩니다.
 - API 키가 감지되면 실제 생성을 호출하고, 미설정 시 안전하게 `--dry-run` 모드로 자동 시연합니다.
-- 시연 중 언제 중단하더라도 임시 파일이 자동 정리되어 Git 워킹 트리가 항상 깨끗하게 유지됩니다.
+
