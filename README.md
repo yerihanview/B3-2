@@ -407,7 +407,7 @@ with open('demo/token_overflow.txt', 'w', encoding='utf-8') as f:
 git add demo/token_overflow.txt
 
 # 500줄 절단 미리보기 확인
-python -m git_agent commit --staged --dry-run | tail -n 8
+python -m git_agent commit --staged --dry-run
 
 # 시연용 대용량 파일 정리
 git reset HEAD demo/token_overflow.txt >/dev/null 2>&1

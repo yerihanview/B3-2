@@ -146,7 +146,7 @@ git add demo/token_overflow.txt
 echo -e "💻 ${BOLD}실행 명령어${NC}: ${CYAN}${PYTHON} -m git_agent commit --staged --dry-run${NC}"
 pause_step
 
-${PYTHON} -m git_agent commit --staged --dry-run | tail -n 8
+${PYTHON} -m git_agent commit --staged --dry-run
 git reset HEAD demo/token_overflow.txt >/dev/null 2>&1 || true
 rm -f demo/token_overflow.txt
 echo -e "\n✔ [Step 4 완료] 500줄 초과 시 [truncated: ... lines omitted] 절삭을 통한 토큰/비용 방어 확인."
