@@ -335,7 +335,7 @@ pip install -e . --break-system-packages
 
 # 2. 코디세이 무료 API 키 설정 예시 (.gitignore에 의해 커밋 제외됨)
 cat << 'EOF' > .env
-OPENAI_API_KEY=sk-cody-live-7ZvLXHk3Qs86Perkk_LhE6v-kzIubkbmLYu1Dyr4EE8
+OPENAI_API_KEY=sk-cody-live-your-key-here
 OPENAI_BASE_URL=https://copa.codyssey.kr/v1
 AI_MODEL=gemini-3-flash
 EOF
